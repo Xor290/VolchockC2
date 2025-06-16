@@ -4,6 +4,8 @@
 from teamserver.config import Config
 from teamserver.listener.http_listener import HttpListener
 from teamserver.admin.admin_server import AdminServer
+from teamserver.agents.agent_handler import AgentHandler
+from queue import Queue
 import os
 import json
 import threading
@@ -18,7 +20,8 @@ class Teamserver:
             raise
 
         self.listeners = []
-
+        self.agent_handler = AgentHandler()
+        self.shared_queue = Queue()
 
     def start_admin(self):
         admin_port = self.config.get("server_port", 8080)
@@ -28,11 +31,12 @@ class Teamserver:
         admin_server = AdminServer(
             port=admin_port,
             users_dict=users,
-            auth_required=auth_required
+            shared_req_queue=self.shared_queue,
+            auth_required=auth_required,
+            agent_handler=self.agent_handler
         )
         admin_thread = threading.Thread(target=admin_server.start, daemon=True)
         admin_thread.start()
-
 
     def start_listeners(self):
         profiles = [
@@ -53,7 +57,13 @@ class Teamserver:
 
             listener_type = profile_cfg.get("type", "").lower()
             if listener_type == "http":
-                listener = HttpListener(config=profile_cfg, host="0.0.0.0", port=port)
+                listener = HttpListener(
+                    config=profile_cfg,
+                    host="0.0.0.0",
+                    port=port,
+                    request_queue=self.shared_queue,
+                    agent_handler=self.agent_handler
+                )
             else:
                 print(f"[!] Unknown listener type: {listener_type}")
                 continue
@@ -63,8 +73,6 @@ class Teamserver:
             self.listeners.append((listener, listener_thread))
 
             print(f"[+] Listener {profile_cfg.get('name')} started on port {port}.")
-
-
 
     def run(self):
         print("[*] Teamserver is running.")

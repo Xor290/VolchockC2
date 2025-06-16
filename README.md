@@ -16,7 +16,7 @@ python -m teamserver.main --config .\config\config.json
 ## Implementation Roadmap
 
 ### 1. Core Listeners (Communication Channels)
-- [ ] Implement basic HTTP listener
+- [+] Implement basic HTTP listener
 - [ ] Implement HTTPS listener with certificate support
 - [ ] Implement DNS listener
 - [ ] Implement FTP listener
@@ -39,7 +39,7 @@ python -m teamserver.main --config .\config\config.json
   - [ ] Develop a client application for operators to connect to the teamserver
 
 ### 5. Communication & Evasion Customization
-- [ ] Implement a configuration/profile file for the teamserver to customize communication parameters (user-agent, sleep, jitter, headers)
+- [+] Implement a configuration/profile file for the teamserver to customize communication parameters (user-agent, sleep, jitter, headers)
 - [ ] Implement shellcode generation for specific listeners
 
 ### 6. Memory & Execution Techniques
