@@ -30,12 +30,8 @@ def get_agent_info(base_url, agent_id, auth):
 def queue_shell_command(base_url, agent_id, command, auth):
     payload = {"command": command}
     resp = requests.post(f"{base_url}/agent/{agent_id}/command", json=payload, auth=auth)
-    if resp.ok:
-        print("[*] Commande shell envoyée !")
-    elif resp.status_code == 401:
+    if resp.status_code == 401:
         print("[!] Accès refusé ! Identifiants invalides.")
-    else:
-        print("[!] Problème lors de l'envoi :", resp.text)
 
 def get_latest_result(base_url, agent_id, auth):
     resp = requests.get(f"{base_url}/agent/{agent_id}/results", auth=auth)
