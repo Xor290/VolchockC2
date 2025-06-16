@@ -1,6 +1,10 @@
 from flask import Flask, request, jsonify
 from functools import wraps
 from queue import Queue
+import logging
+
+log = logging.getLogger('werkzeug')
+log.setLevel(logging.ERROR)
 
 class AdminServer:
     def __init__(self, port, users_dict, shared_req_queue, auth_required=True, agent_handler=None, xor_key=None):
@@ -28,7 +32,6 @@ class AdminServer:
                     401,
                     {"WWW-Authenticate": 'Basic realm="Login required"'},
                 )
-            print(f"[+] Successful authentication for {auth.username}")
             return f(*args, **kwargs)
         return decorated
 

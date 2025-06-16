@@ -2,6 +2,7 @@ import argparse
 import requests
 from requests.auth import HTTPBasicAuth
 import time
+from datetime import datetime
 
 def list_agents(base_url, auth):
     resp = requests.get(f"{base_url}/agents", auth=auth)
@@ -19,7 +20,10 @@ def get_agent_info(base_url, agent_id, auth):
     if resp.ok:
         info = resp.json().get("info", {})
         for k, v in info.items():
-            print(f"  {k}: {v}")
+            if k == "last_seen":
+                print(f"  {k}: {datetime.fromtimestamp(v).strftime('%Y-%m-%d %H:%M:%S')}")
+            else:
+                print(f"  {k}: {v}")
     else:
         print("[!] Impossible de récupérer les infos de l'agent.")
 
@@ -94,10 +98,14 @@ if __name__ == "__main__":
                                 last_seen = latest
                                 break  # on s’arrête après le premier affichage
                         time.sleep(1)
+                elif len(ach)<1:
+                    pass
                 else:
                     print("Commandes valides: infos, shell <cmd>, back")
         elif choice in ("quit", "exit"):
             print("Bye.")
             break
+        elif len(choice)<1:
+            pass
         else:
             print("Commandes valides : list, use <num>, quit")
