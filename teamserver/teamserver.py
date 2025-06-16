@@ -62,7 +62,8 @@ class Teamserver:
                     host="0.0.0.0",
                     port=port,
                     request_queue=self.shared_queue,
-                    agent_handler=self.agent_handler
+                    agent_handler=self.agent_handler,
+                    xor_key= self.config.get("xor_key", None)
                 )
             else:
                 print(f"[!] Unknown listener type: {listener_type}")

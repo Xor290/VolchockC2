@@ -2,16 +2,23 @@
 # Manages agent (beacon) sessions and their communication.
 
 import threading
+from collections import deque  # Ajouté
 
 class AgentHandler:
     def __init__(self):
         self.agents = {}
+        self.agent_commands = {}  # commandes par agent
+        self.agent_results = {}   # résultats par agent
         self.lock = threading.Lock()
 
     def register_agent(self, agent_id, info):
         with self.lock:
             # Mise à jour ou ajout
             self.agents[agent_id] = info
+            if agent_id not in self.agent_commands:
+                self.agent_commands[agent_id] = deque()  # init queue commande
+            if agent_id not in self.agent_results:
+                self.agent_results[agent_id] = deque()   # init queue résultats
         print(f"[*] Registered new agent: {agent_id}")
 
     def update_agent(self, agent_id, fields):
@@ -27,3 +34,44 @@ class AgentHandler:
     def all_agents(self):
         with self.lock:
             return dict(self.agents)
+
+    # --- Gestion des commandes par agent ---
+    def queue_command(self, agent_id, command):
+        with self.lock:
+            if agent_id in self.agent_commands:
+                self.agent_commands[agent_id].append(command)
+                print(f"[*] Queued command for agent {agent_id}: {command}")
+                return True
+            print(f"[!] Agent {agent_id} inconnu (queue_command)")
+            return False
+
+    def pop_commands(self, agent_id):
+        # Vide la queue de commandes à chaque pull de l'implant
+        with self.lock:
+            cmds = []
+            if agent_id in self.agent_commands:
+                while self.agent_commands[agent_id]:
+                    cmds.append(self.agent_commands[agent_id].popleft())
+            if cmds:
+                print(f"[*] {len(cmds)} commandes récupérées et retirées pour agent {agent_id}")
+            return cmds
+
+    # --- Gestion des résultats par agent ---
+    def push_agent_result(self, agent_id, output):
+        with self.lock:
+            if agent_id not in self.agent_results:
+                self.agent_results[agent_id] = deque()
+            self.agent_results[agent_id].append(output)
+            print(f"[*] Stocked result for agent {agent_id}: {output[:100]}")
+
+    def pop_agent_results(self, agent_id):
+        # Consomme/détruit les résultats en les retournant (lecture destructrice)
+        with self.lock:
+            if agent_id in self.agent_results:
+                results = list(self.agent_results[agent_id])  # récupère tout
+                self.agent_results[agent_id].clear()          # efface la queue
+                if results:
+                    print(f"[*] {len(results)} résultat(s) consommé(s) pour agent {agent_id}")
+                return results
+            return []
+
