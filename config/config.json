@@ -1,0 +1,7 @@
+{
+    "server_port": 8088,
+    "auth_required": true,
+    "clients": {
+        "user1": "superpassword"
+    }
+}

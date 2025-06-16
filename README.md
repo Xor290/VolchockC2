@@ -1,6 +1,17 @@
 # VolchockC2
 VolchokC2 is a custom-built Command & Control (C2) framework, currently under active development. Designed for red team operations and adversary simulation, VolchokC2 focuses on flexibility, stealth, and efficient post-exploitation capabilities.
 
+---
+
+## Installation
+
+```
+git clone https://github.com/ProcessusT/VolchockC2
+cd VolchockC2
+python -m teamserver.main --config .\config\config.json
+```
+
+---
 
 ## Implementation Roadmap
 
