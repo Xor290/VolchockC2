@@ -39,7 +39,7 @@ class HttpListener(BaseListener):
             if request.headers.get(header) != value:
                 return f"Invalid header {header}", 403
 
-        # Enregistrement agent : déduire un agent_id minimal (header ou combinaison IP+UA+URL)
+        # Extraction des propriétés agent
         if self.agent_handler is not None:
             agent_id = (
                 request.json.get('agent_id')
@@ -47,14 +47,39 @@ class HttpListener(BaseListener):
                 else headers.get('X-Agent-Id')
                 or (request.remote_addr + "_" + headers.get("User-Agent", ""))
             )
-            if agent_id and not self.agent_handler.get_agent(agent_id):
-                agent_info = {
-                    "remote_addr": request.remote_addr,
-                    "headers": headers,
-                    "first_seen": time.time(),
-                    "uri": request.path
+
+            now = time.time()
+            # Extraction des critères depuis le POST JSON
+            if request.is_json and request.json:
+                agent_fields = {
+                    "last_seen": now,
+                    "hostname": request.json.get("hostname"),
+                    "ip": request.remote_addr,
+                    "process_name": request.json.get("process_name"),
+                    "username": request.json.get("username")
                 }
-                self.agent_handler.register_agent(agent_id, agent_info)
+            else:
+                # fallback minimal (user-agent/IP uniquement)
+                agent_fields = {
+                    "last_seen": now,
+                    "hostname": None,
+                    "ip": request.remote_addr,
+                    "process_name": None,
+                    "username": None
+                }
+            
+            if agent_id:
+                if not self.agent_handler.get_agent(agent_id):
+                    # Nouveau
+                    agent_info = {
+                        "agent_id": agent_id,
+                        "first_seen": now,
+                        **agent_fields
+                    }
+                    self.agent_handler.register_agent(agent_id, agent_info)
+                else:
+                    # Déjà connu, on ne met à jour que last_seen & champs dynamiques
+                    self.agent_handler.update_agent(agent_id, agent_fields)
 
         if self.request_queue is not None:
             entry = {
