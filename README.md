@@ -57,34 +57,33 @@ python -m teamserver.main --config .\config\config.json
 ## Structure
 
 ```
-VolchockC2                           # Racine du projet VolchockC2
-├── LICENSE                          # Licence du projet (usage, droits, etc.)
-├── README.md                        # Documentation principale (présentation, usage, etc.)
+VolchockC2                           # Root directory of the VolchockC2 project
+├── LICENSE                          # Project license (usage, rights, etc.)
+├── README.md                        # Main documentation (overview, usage, etc.)
 ├── agent/
-│   └── http_agent.cpp               # Implant/agent C++ : communique avec le teamserver en HTTP
+│   └── http_agent.cpp               # C++ implant/agent: communicates with the teamserver over HTTP
 ├── client/
-│   ├── client.py                    # Interface CLI/console pour interagir avec le C2
-│   └── gui                          # (Dossier prévu pour GUI, interface graphique du client)
+│   ├── client.py                    # CLI/console interface to interact with the C2
+│   └── gui                          # (Folder reserved for GUI, graphical client interface)
 ├── config/
-│   └── config.json                  # Configuration globale du projet (ex: endpoints, clés)
-├── struct.py                        # Définitions et structures de données partagées (ex: protocoles/messages)
-└── teamserver/                      # Coeur du serveur C2 (gestion, communication, administration)
-    ├── __init__.py                  # Indique que teamserver/ est un package Python
+│   └── config.json                  # Global project configuration (e.g., endpoints, keys)
+├── struct.py                        # Definitions and shared data structures (e.g., protocols/messages)
+└── teamserver/                      # Core of the C2 server (management, communications, administration)
+    ├── __init__.py                  # Marks teamserver/ as a Python package
     ├── admin/
-    │   └── admin_server.py          # Serveur d’administration (auth, commandes admin, gestion utilisateurs)
+    │   └── admin_server.py          # Administration server (auth, admin commands, user management)
     ├── agents/
-    │   └── agent_handler.py         # Gestionnaire des agents : suivi, registre, communication agents
-    ├── config.py                    # Configuration côté serveur (chargement, parsing, validation)
+    │   └── agent_handler.py         # Agent handler: tracks, registers, and communicates with agents
+    ├── config.py                    # Server-side configuration (loading, parsing, validation)
     ├── encryption/
-    │   └── xor_util.py              # Outils de chiffrement/déchiffrement (XOR, base64) pour la comm
+    │   └── xor_util.py              # Encryption/decryption tools (XOR, base64) for communications
     ├── listener/
-    │   ├── base_listener.py         # Classe de base pour les listeners (abstractions, utilitaires)
-    │   └── http_listener.py         # Listener HTTP : reçoit et traite les requêtes agents via HTTP
-    ├── main.py                      # Point d’entrée principal côté serveur (lance tous les modules, boucles)
+    │   ├── base_listener.py         # Base class for listeners (abstractions, utilities)
+    │   └── http_listener.py         # HTTP listener: receives and processes agent HTTP requests
+    ├── main.py                      # Main server entry point (launches all modules, main loops)
     ├── profiles/
-    │   └── volchock.profile         # Fichier de profil pour personnaliser agents/écouteurs (config avancée)
-    └── teamserver.py                # Script central du serveur (orchestration, threads, logiques principales)
-
+    │   └── volchock.profile         # Profile file to customize agents/listeners (advanced config)
+    └── teamserver.py                # Central server script (orchestration, threads, main logic)
 ```
 
 ---
