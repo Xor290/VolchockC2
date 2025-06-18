@@ -59,7 +59,7 @@ class AgentHandler:
             if agent_id not in self.agent_results:
                 self.agent_results[agent_id] = deque()
             self.agent_results[agent_id].append(output)
-            print(f"[*] Stocked result for agent {agent_id}: {output[:10]}")
+            print(f"[*] Stocked result for agent {agent_id}: {output[:100]}")
 
     def pop_agent_results(self, agent_id):
         with self.lock:

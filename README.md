@@ -17,11 +17,9 @@ python -m teamserver.main --config .\config\config.json
 
 ### 1. Core Listeners (Communication Channels)
 - [x] Implement basic HTTP listener
-- [ ] Implement HTTPS listener with certificate support
-- [ ] Implement DNS listener
-- [ ] Implement FTP listener
-- [ ] Implement ICMP listener
-- [ ] Start, edit, and stop listeners dynamically
+- [x] Implement QUIC listener with certificate support
+- [x] Implement DNS listener
+- [ ] Start and stop listeners dynamically
 
 ### 2. Basic Agent Functionality
 - [x] Develop a basic C/C++ agent for connectivity testing with the teamserver
