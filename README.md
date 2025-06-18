@@ -49,6 +49,7 @@ python client/client.py -i 127.0.0.1 -p 8088 -u user1 --password superpassword
 ### 5. Memory & Execution Techniques
 - [ ] Implement in-memory PE (Portable Executable) execution for C/C++ payloads
 - [ ] Implement in-memory PE execution for C# payloads
+- [ ] Implement Beacon Object File (BOF) support
 
 ### 6. Graphical User Interface (GUI)
 - [ ] Develop a graphical user interface:
