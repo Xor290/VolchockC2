@@ -260,7 +260,6 @@ DWORD WINAPI agent_thread(LPVOID _) {
 
 __declspec(dllexport)
 void go(void* param) {
-    MessageBoxA(NULL, "Hello depuis l'agent Volchok !", "agent.dll", MB_OK | MB_ICONINFORMATION);
     HANDLE h = CreateThread(NULL, 0, agent_thread, NULL, 0, NULL); 
     if (h) {
         WaitForSingleObject(h, INFINITE);
