@@ -81,13 +81,11 @@ python client/client.py -i 127.0.0.1 -p 8088 -u user1 --password superpassword
 
 ### 1. Core Listeners (Communication Channels)
 - [x] Implement basic HTTP listener
-- [x] Implement DNS listener
-- [ ] Start and stop listeners dynamically
+- [ ] Implement DNS listener
 
 ### 2. Command & Control Operations
-- [x] Implement command sending functionality in the teamserver
-- [x] Implement command execution capability in the agents
-- [x] Implement a command execution queue in the teamserver
+- [x] Implement command execution queue
+- [ ] Implement upload and download commands
 
 ### 3. Multi-Entity Support
 - [x] Implement multi-agent support (handle multiple victims/sessions simultaneously)
@@ -96,8 +94,8 @@ python client/client.py -i 127.0.0.1 -p 8088 -u user1 --password superpassword
   - [x] Develop a client application for operators to connect to the teamserver
 
 ### 4. Communication & Evasion Customization
-- [x] Implement a configuration/profile file for the teamserver to customize communication parameters (user-agent, sleep, jitter, headers)
-- [ ] Implement shellcode generation for specific listeners
+- [x] Implement a configuration/profile file for the teamserver to customize communication parameters
+- [ ] Implement agent generation for specific listeners
 
 ### 5. Memory & Execution Techniques
 - [ ] Implement in-memory PE (Portable Executable) execution for C/C++ payloads
@@ -108,7 +106,7 @@ python client/client.py -i 127.0.0.1 -p 8088 -u user1 --password superpassword
 - [ ] Develop a graphical user interface:
   - [ ] Logs view: teamserver logs
   - [ ] User view: user connections and activity
-  - [ ] Victim view: list of connected agents with right-click interaction to send commands
+  - [ ] Agent view: list of connected agents with right-click interaction to send commands
 
 ---
 
