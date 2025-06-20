@@ -23,11 +23,62 @@ python client/client.py -i 127.0.0.1 -p 8088 -u user1 --password superpassword
 
 ---
 
+## Communication Protocol
+
+### Encryption/Decryption Process
+
+- **Encryption:**  
+  `string → xor → base64`
+- **Decryption:**  
+  `base64 → xor → string`
+
+---
+
+### Communication Content Templates
+
+#### **Agent ➔ Server**
+
+```json
+{
+    "agent_id": "<ID>",
+    "hostname": "<HOSTNAME>",
+    "username": "<USERNAME>",
+    "process_name": "<PROCESS_NAME>",
+    "results": "<RESULTS>"
+}
+```
+
+#### **Server ➔ Agent**
+
+```json
+{
+    "type": "<TYPE>",
+    "content": "<CONTENT>"
+}
+```
+
+#### **Supported Task Types**
+
+- cmd: Execute the content value as a command using cmd.exe and return the result.
+
+
+#### **Example**
+
+```json
+{
+    "task": {
+        "type": "cmd",
+        "content": "whoami"
+    }
+}
+```
+
+---
+
 ## Implementation Roadmap
 
 ### 1. Core Listeners (Communication Channels)
 - [x] Implement basic HTTP listener
-- [x] Implement QUIC listener with certificate support
 - [x] Implement DNS listener
 - [ ] Start and stop listeners dynamically
 

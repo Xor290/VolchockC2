@@ -10,20 +10,18 @@ class XORCipher:
         key_len = len(self.key)
         return bytes([b ^ self.key[i % key_len] for i, b in enumerate(data)])
 
-    def xor_str(self, data: str) -> bytes:
-        # Entrée string, sortie bytes xorés
-        return self.xor_bytes(data.encode())
 
-    def decode_to_str(self, data: bytes) -> str:
-        # Pour obtenir string à partir de bytes xorés
-        return self.xor_bytes(data).decode(errors="replace")
+    # Encryption : string → xor → base64 
+    # Decryption : base64 → xor → string
 
-    def encrypt_b64(self, data: str) -> str:
-        # XOR puis encodage base64 pour JSON/HTTP
-        xored = self.xor_str(data)
-        return base64.b64encode(xored).decode()
 
-    def decrypt_b64(self, data_b64: str) -> str:
-        # base64 → xor → string
-        xored = base64.b64decode(data_b64.encode())
-        return self.decode_to_str(xored)
+    def encrypt(self, data: str) -> str:
+        xored = self.xor_bytes(data)
+        b64_encoded = base64.b64encode(xored)
+        return b64_encoded.decode("utf-8", errors="replace")
+
+    def decrypt(self, b64_encoded: str) -> str:
+        xored = base64.b64decode(b64_encoded)
+        clear_result = self.xor_bytes(xored)
+        clear_result = clear_result.decode("utf-8", errors="replace")
+        return clear_result

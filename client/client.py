@@ -80,9 +80,10 @@ if __name__ == "__main__":
                     if not cmd:
                         print("Usage: shell <commande>")
                         continue
-                    queue_shell_command(base_url, agent_id, cmd, auth)
+                    cmd_to_queue = str({"cmd":cmd})
+                    queue_shell_command(base_url, agent_id, cmd_to_queue, auth)
                     last_seen = None
-                    for i in range(10):
+                    while(1):
                         results = get_latest_result(base_url, agent_id, auth)
                         if results is None:
                             break

