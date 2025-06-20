@@ -114,24 +114,22 @@ python client/client.py -i 127.0.0.1 -p 8088 -u user1 --password superpassword
 
 ```
 VolchockC2
-├── LICENSE
 ├── README.md
 ├── agent
 │   ├── dns
+│   │   ├── agent_dns.exe
 │   │   └── dns_agent.c
-│   ├── http
-│   │   └── http_agent.cpp
-│   ├── http_dll
-│   │   ├── http_agent_dll.c
-│   │   ├── rdi_loader.cpp
-│   │   └── simple_dll_loader.c
-│   └── quic
-│       ├── agent_quic.exe
-│       ├── curl.exe
-│       └── quic_agent.cpp
+│   └── http
+│       └── http_agent.cpp
+├── assets
+│   └── demo.jpg
 ├── client
 │   ├── client.py
-│   └── gui
+│   ├── gui
+│   ├── loot
+│   │   └── Hertz_Proc_agent.exe
+│   │       └── franky.png
+│   └── musique.jpg
 ├── config
 │   └── config.json
 ├── teamserver
@@ -146,12 +144,9 @@ VolchockC2
 │   ├── listener
 │   │   ├── base_listener.py
 │   │   ├── dns_listener.py
-│   │   ├── http_listener.py
-│   │   └── quic_listener.py
+│   │   └── http_listener.py
 │   ├── main.py
 │   ├── profiles
-│   │   ├── quic_server.crt
-│   │   ├── quic_server.key
 │   │   └── volchock.profile
 │   └── teamserver.py
 └── tree_map.py
