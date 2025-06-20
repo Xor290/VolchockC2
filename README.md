@@ -85,7 +85,7 @@ python client/client.py -i 127.0.0.1 -p 8088 -u user1 --password superpassword
 
 ### 2. Command & Control Operations
 - [x] Implement command execution queue
-- [ ] Implement upload and download commands
+- [x] Implement upload and download commands
 
 ### 3. Multi-Entity Support
 - [x] Implement multi-agent support (handle multiple victims/sessions simultaneously)

