@@ -52,8 +52,10 @@ python client/client.py -i 127.0.0.1 -p 8088 -u user1 --password superpassword
 
 ```json
 {
-    "type": "<TYPE>",
-    "content": "<CONTENT>"
+    "task": {
+        "type": "<TYPE>",
+        "content": "<CONTENT>"
+    }
 }
 ```
 
