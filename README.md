@@ -53,8 +53,7 @@ python client/client.py -i 127.0.0.1 -p 8088 -u user1 --password superpassword
 ```json
 {
     "task": {
-        "type": "<TYPE>",
-        "content": "<CONTENT>"
+        "<TYPE>": "<CONTENT>"
     }
 }
 ```
@@ -69,8 +68,7 @@ python client/client.py -i 127.0.0.1 -p 8088 -u user1 --password superpassword
 ```json
 {
     "task": {
-        "type": "cmd",
-        "content": "whoami"
+        "cmd": "whoami"
     }
 }
 ```
