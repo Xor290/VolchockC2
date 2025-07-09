@@ -20,11 +20,8 @@ cd VolchockC2
 python -m teamserver.main --config .\config\config.json
 
 # for the client :
-    # CLI client
-    python client/client.py -i 127.0.0.1 -p 8088 -u user1 --password superpassword
-
-    # GUI client
-    python client/client-gui.py
+cd client
+python client.py
 
 # agent compilation :
 cd agent/http
