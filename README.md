@@ -205,3 +205,12 @@ VolchockC2
 ```
 
 ---
+
+### Teammates
+
+A big thank to my bros for their support and help :
+
+<a href="https://www.linkedin.com/in/christopher-simon33/">FrozenK</a><br />
+<a href="https://www.linkedin.com/in/wakedxy/">Waked XY</a><br />
+<a href="https://www.linkedin.com/in/kondah/">Anak0nda</a><br />
+<a href="https://www.linkedin.com/in/tristan-manzano-963223103/">X-n0</a><br />
