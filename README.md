@@ -184,8 +184,17 @@ VolchockC2
 │   ├── demo.jpg
 │   └── gui-demo.jpg
 ├── client
-│   ├── client-gui.py
-│   └── client.py
+│   ├── assets
+│   │   ├── font.ttf
+│   │   └── logo.jpg
+│   ├── client.py
+│   ├── constants
+│   │   └── colors.py
+│   ├── ui
+│   │   ├── login.py
+│   │   └── mainframe.py
+│   └── utils
+│       └── requests_utils.py
 ├── config
 │   └── config.json
 ├── teamserver
