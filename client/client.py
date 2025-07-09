@@ -71,6 +71,10 @@ Available Commands:
 - upload <local_file_path>
     Upload a file from the server to the target machine.
     Example: upload /home/user/payload.exe
+    
+- exec-pe <local_file_path>
+    In-memory execution of a local PE on the target machine.
+    Example: exec-pe /home/user/payload.exe
 
 - back
     Return to the previous menu or exit the current session.

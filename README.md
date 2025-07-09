@@ -3,6 +3,8 @@ VolchockC2 is a custom-built Command & Control (C2) framework, currently under a
 
 <p align="center">
   <img src="assets/demo.jpg" alt="Demo" width="90%"/>
+  <br />
+  <img src="assets/gui-demo.jpg" alt="GUI Demo" width="90%"/>
 </p>
 
 
@@ -17,8 +19,12 @@ cd VolchockC2
 # for the teamserver :
 python -m teamserver.main --config .\config\config.json
 
-# for the client
-python client/client.py -i 127.0.0.1 -p 8088 -u user1 --password superpassword
+# for the client :
+    # CLI client
+    python client/client.py -i 127.0.0.1 -p 8088 -u user1 --password superpassword
+
+    # GUI client
+    python client/client-gui.py
 ```
 
 ---
@@ -60,15 +66,42 @@ python client/client.py -i 127.0.0.1 -p 8088 -u user1 --password superpassword
 
 #### **Supported Task Types**
 
-- cmd: Execute the content value as a command using cmd.exe and return the result.
-
-
-#### **Example**
-
+- cmd: Execute the content value as a command using cmd.exe and return the result
 ```json
 {
     "task": {
         "cmd": "whoami"
+    }
+}
+```
+
+- download: Download a file from the target machine to the server.
+```json
+{
+    "task": {
+        "download": "<remote_file_path>"
+    }
+}
+```
+
+- upload: Upload a file from the server to the target machine.
+```json
+{
+    "task": {
+        "upload": "<local_file_path>"
+    }
+}
+```
+
+- exec-pe: In-memory execution of a local PE on the target machine.
+```json
+{
+    "task": {
+        "exec-pe": {
+            "filename": "<filename>",
+            "content": "<b64_encoded_file>",
+            "args": "<b64_encoded_args>"
+        }
     }
 }
 ```
@@ -78,8 +111,8 @@ python client/client.py -i 127.0.0.1 -p 8088 -u user1 --password superpassword
 ## Implementation Roadmap
 
 ### 1. Core Listeners (Communication Channels)
-- [x] Implement basic HTTP listener
-- [ ] Implement DNS listener
+- [x] Implement HTTP listener
+- [x] Implement basic DNS listener
 
 ### 2. Command & Control Operations
 - [x] Implement command execution queue
@@ -96,15 +129,15 @@ python client/client.py -i 127.0.0.1 -p 8088 -u user1 --password superpassword
 - [ ] Implement agent generation for specific listeners
 
 ### 5. Memory & Execution Techniques
-- [ ] Implement in-memory PE (Portable Executable) execution for C/C++ payloads
+- [x] Implement in-memory PE (Portable Executable) execution for C/C++ payloads
 - [ ] Implement in-memory PE execution for C# payloads
 - [ ] Implement Beacon Object File (BOF) support
 
 ### 6. Graphical User Interface (GUI)
-- [ ] Develop a graphical user interface:
+- [x] Develop a graphical user interface:
   - [ ] Logs view: teamserver logs
   - [ ] User view: user connections and activity
-  - [ ] Agent view: list of connected agents with right-click interaction to send commands
+  - [x] Agent view: list of connected agents with interaction to send commands
 
 ---
 
@@ -112,22 +145,35 @@ python client/client.py -i 127.0.0.1 -p 8088 -u user1 --password superpassword
 
 ```
 VolchockC2
+├── .gitattributes
+├── LICENSE
 ├── README.md
 ├── agent
-│   ├── dns
-│   │   ├── agent_dns.exe
-│   │   └── dns_agent.c
-│   └── http
-│       └── http_agent.cpp
+│   ├── http
+│   │   ├── base64.cpp
+│   │   ├── base64.h
+│   │   ├── config.h
+│   │   ├── crypt.cpp
+│   │   ├── crypt.h
+│   │   ├── file_utils.cpp
+│   │   ├── file_utils.h
+│   │   ├── http_client.cpp
+│   │   ├── http_client.h
+│   │   ├── main.cpp
+│   │   ├── pe-exec.cpp
+│   │   ├── pe-exec.h
+│   │   ├── system_utils.cpp
+│   │   ├── system_utils.h
+│   │   ├── task.cpp
+│   │   └── task.h
+│   └── nim
+│       └── agent.nim
 ├── assets
-│   └── demo.jpg
+│   ├── demo.jpg
+│   └── gui-demo.jpg
 ├── client
-│   ├── client.py
-│   ├── gui
-│   ├── loot
-│   │   └── Hertz_Proc_agent.exe
-│   │       └── franky.png
-│   └── musique.jpg
+│   ├── client-gui.py
+│   └── client.py
 ├── config
 │   └── config.json
 ├── teamserver

