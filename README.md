@@ -134,10 +134,18 @@ python -m teamserver.main --config .\config\config.json
 - [ ] Implement Beacon Object File (BOF) support
 
 ### 6. Graphical User Interface (GUI)
-- [x] Develop a graphical user interface:
+- [x] Develop a ugly graphical user interface:
   - [ ] Logs view: teamserver logs
   - [ ] User view: user connections and activity
   - [x] Agent view: list of connected agents with interaction to send commands
+  - [ ] Try to make the GUI acceptable
+
+### 7. Advanced features (It will probably never be implemented)
+  - [ ] Record all commands and output for each agents (sqlite db maybe ?)
+  - [ ] Generation of a shellcode agent
+  - [ ] Make contributors rich and famous
+  - [ ] Stop all wars in the world
+
 
 ---
 
