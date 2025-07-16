@@ -3,6 +3,8 @@
 
 import threading
 from collections import deque 
+from teamserver.logger.CustomLogger import CustomLogger
+log = CustomLogger("volchock")
 
 class AgentHandler:
     def __init__(self):
@@ -13,19 +15,18 @@ class AgentHandler:
 
     def register_agent(self, agent_id, info):
         with self.lock:
-            # Mise à jour ou ajout
             self.agents[agent_id] = info
             if agent_id not in self.agent_commands:
                 self.agent_commands[agent_id] = deque()  # init queue commande
             if agent_id not in self.agent_results:
                 self.agent_results[agent_id] = deque()   # init queue résultats
-        print(f"[*] New agent registered : {agent_id}")
+        log.info(f"[+] New agent registered : {agent_id}")
 
     def update_agent(self, agent_id, fields):
         with self.lock:
             if agent_id in self.agents:
                 self.agents[agent_id].update(fields)
-                print(f"[*] Beacon update received for {agent_id}")
+                log.debug(f"[+] Beacon update received for {agent_id}")
     
     def get_agent(self, agent_id):
         with self.lock:
@@ -35,18 +36,16 @@ class AgentHandler:
         with self.lock:
             return dict(self.agents)
 
-    # --- Gestion des commandes par agent ---
     def queue_command(self, agent_id, command):
         with self.lock:
             if agent_id in self.agent_commands:
                 self.agent_commands[agent_id].append(command)
-                print(f"[*] Queued command for agent {agent_id}: {command}")
+                log.debug(f"[+] Queued command for agent {agent_id}")
                 return True
-            print(f"[!] Agent {agent_id} inconnu (queue_command)")
+            log.error(f"[!] Unknown agent {agent_id} (queue_command)")
             return False
 
     def pop_commands(self, agent_id):
-        # Vide la queue de commandes à chaque pull de l'implant
         with self.lock:
             if agent_id in self.agent_commands:
                 while self.agent_commands[agent_id]:
@@ -58,7 +57,7 @@ class AgentHandler:
             if agent_id not in self.agent_results:
                 self.agent_results[agent_id] = deque()
             self.agent_results[agent_id].append(output)
-            print(f"[*] Stocked result for agent {agent_id}: {output[:100]}")
+            log.debug(f"[+] Stocked result for agent {agent_id}")
 
     def pop_agent_results(self, agent_id):
         with self.lock:
@@ -67,4 +66,3 @@ class AgentHandler:
                 self.agent_results[agent_id].clear()          # efface la queue
                 return results
             return []
-

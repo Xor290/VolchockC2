@@ -1,107 +1,138 @@
-import wx
-from requests.auth import HTTPBasicAuth
+from kivy.app import App
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.label import Label
+from kivy.uix.textinput import TextInput
+from kivy.uix.button import Button
+from kivy.uix.image import Image
+from kivy.core.text import LabelBase
+from kivy.uix.popup import Popup
+from kivy.uix.screenmanager import Screen
+from kivy.properties import StringProperty
 import requests
+from requests.auth import HTTPBasicAuth
 import os
-from constants.colors import RED, GRAY, WHITE, INPUT_GRAY
+from constants.colors import RED, GREEN, GRAY, WHITE, INPUT_GRAY
 
-class LoginFrame(wx.Frame):
-    def __init__(self):
-        super().__init__(parent=None, title="", size=(450, 400))
-        self.SetBackgroundColour(WHITE)
-        panel = wx.Panel(self)
-        panel.SetBackgroundColour(WHITE)
-        logo_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '.', '..', 'assets', 'logo.jpg'))
+class LoginScreen(Screen):
+    def __init__(self, **kwargs):
+        super(LoginScreen, self).__init__(**kwargs)
+        self.app_ref = None
+        layout = BoxLayout(orientation='vertical', padding=[30, 25, 30, 25], spacing=10)
+        # Custom font
         font_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '.', '..', 'assets', 'font.ttf'))
-        vbox = wx.BoxSizer(wx.VERTICAL)
-        if os.path.exists(logo_path):
-            img = wx.Image(logo_path, wx.BITMAP_TYPE_JPEG)
-            img = img.Scale(100, 100, wx.IMAGE_QUALITY_HIGH)
-            logo_bitmap = wx.StaticBitmap(panel, bitmap=wx.Bitmap(img))
-            vbox.Add(logo_bitmap, flag=wx.ALIGN_CENTER | wx.TOP, border=15)
-        else:
-            title = wx.StaticText(panel, label="VOLCHOCK LOGIN")
-            title.SetForegroundColour(RED)
-            title_font = title.GetFont()
-            title_font.SetWeight(wx.FONTWEIGHT_BOLD)
-            title_font.SetPointSize(16)
-            title.SetFont(title_font)
-            vbox.Add(title, flag=wx.ALIGN_CENTER | wx.TOP, border=5)
-        volchock_label = wx.StaticText(panel, label="VOLCHOCK LOGIN")
-        volchock_label.SetForegroundColour(RED)
-        font_face_name = "Regular Earth"
-        use_custom_font = False
+        logo_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '.', '..', 'assets', 'logo.jpg'))
+        font_face_name = "RegularEarth"
+        font_name = None
         if os.path.exists(font_path):
-            wx.Font.AddPrivateFont(font_path)
-            try:
-                custom_font = wx.Font(28, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, False, font_face_name)
-                volchock_label.SetFont(custom_font)
-                use_custom_font = True
-            except Exception as e:
-                print("Erreur font custom :", e)
-        if not use_custom_font:
-            default_font = wx.Font(28, wx.FONTFAMILY_SWISS, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD)
-            volchock_label.SetFont(default_font)
-        vbox.Add(volchock_label, flag=wx.ALIGN_CENTER | wx.TOP, border=10)
-        ip_label = wx.StaticText(panel, label="   IP Address:")
-        ip_label.SetForegroundColour(GRAY)
-        port_label = wx.StaticText(panel, label="   Port:")
-        port_label.SetForegroundColour(GRAY)
-        user_label = wx.StaticText(panel, label="   Username:")
-        user_label.SetForegroundColour(GRAY)
-        pwd_label = wx.StaticText(panel, label="   Password:")
-        pwd_label.SetForegroundColour(GRAY)
-        self.ip_txt = wx.TextCtrl(panel, value="127.0.0.1", style=wx.TE_PROCESS_ENTER)
-        self.port_txt = wx.TextCtrl(panel, value="8088", style=wx.TE_PROCESS_ENTER)
-        self.user_txt = wx.TextCtrl(panel, value="user1", style=wx.TE_PROCESS_ENTER)
-        self.pwd_txt = wx.TextCtrl(panel, value="superpassword", style=wx.TE_PASSWORD | wx.TE_PROCESS_ENTER)
-        for ctrl in (self.ip_txt, self.port_txt, self.user_txt, self.pwd_txt):
-            ctrl.SetBackgroundColour(INPUT_GRAY)
-            ctrl.SetForegroundColour(WHITE)
-        self.ip_txt.Bind(wx.EVT_TEXT_ENTER, self.on_login)
-        self.port_txt.Bind(wx.EVT_TEXT_ENTER, self.on_login)
-        self.user_txt.Bind(wx.EVT_TEXT_ENTER, self.on_login)
-        self.pwd_txt.Bind(wx.EVT_TEXT_ENTER, self.on_login)
-        grid = wx.FlexGridSizer(4, 2, 8, 8)
-        grid.AddMany([
-            (ip_label, 0, wx.ALIGN_CENTER_VERTICAL), (self.ip_txt, 1, wx.EXPAND),
-            (port_label, 0, wx.ALIGN_CENTER_VERTICAL), (self.port_txt, 1, wx.EXPAND),
-            (user_label, 0, wx.ALIGN_CENTER_VERTICAL), (self.user_txt, 1, wx.EXPAND),
-            (pwd_label, 0, wx.ALIGN_CENTER_VERTICAL), (self.pwd_txt, 1, wx.EXPAND),
-        ])
-        grid.AddGrowableCol(1, 1)
-        h_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        h_sizer.Add(grid, 1, wx.EXPAND | wx.ALL, 2)
-        h_sizer.Add((15, 1))
-        vbox.Add(h_sizer, flag=wx.EXPAND | wx.ALL, border=2)
-        self.msg = wx.StaticText(panel, label="", style=wx.ALIGN_CENTER)
-        self.msg.SetForegroundColour(RED)
-        vbox.Add(self.msg, flag=wx.ALL | wx.EXPAND, border=2)
-        self.login_btn = wx.Button(panel, label="Log in")
-        self.login_btn.SetForegroundColour(RED)
-        self.login_btn.Bind(wx.EVT_BUTTON, self.on_login)
-        vbox.Add(self.login_btn, flag=wx.ALL | wx.ALIGN_CENTER, border=1)
-        panel.SetSizer(vbox)
-        self.login_btn.SetDefault()
-        self.CenterOnScreen()
+            LabelBase.register(name=font_face_name, fn_regular=font_path)
+            font_name = font_face_name
+        # Logo
+        if os.path.exists(logo_path):
+            logo = Image(source=logo_path, size_hint=(None, None), size=(100, 100), allow_stretch=True)
+            box_logo = BoxLayout(size_hint=(1, None), height=120)
+            box_logo.add_widget(Label())
+            box_logo.add_widget(logo)
+            box_logo.add_widget(Label())
+            layout.add_widget(box_logo)
+        else:
+            title_lbl = Label(
+                text="VOLCHOCK LOGIN",
+                color=RED,
+                font_size=28,
+                bold=True,
+                size_hint=(1, None),
+                height=40,
+                font_name=font_name
+            )
+            layout.add_widget(title_lbl)
+        layout.add_widget(Label(size_hint=(1, 0.1)))
+        volchock = Label(
+            text="VOLCHOCK LOGIN",
+            color=RED,
+            font_size=28,
+            font_name=font_name,
+            bold=True,
+            size_hint=(1, None),
+            height=40
+        )
+        layout.add_widget(volchock)
+        layout.add_widget(Label(size_hint=(1, 0.01)))
 
-    def on_login(self, event):
-        from ui.mainframe import MainFrame 
-        ip = self.ip_txt.GetValue()
-        port = self.port_txt.GetValue()
-        user = self.user_txt.GetValue()
-        pwd = self.pwd_txt.GetValue()
+        def make_row(label_txt, hint, passwd=False, _default="", _id=None):
+            row = BoxLayout(orientation="horizontal", size_hint=(1, None), height=38, spacing=6)
+            label = Label(text=label_txt, color=GRAY, font_size=16, size_hint=(0.32, None), height=38, halign="left", valign="middle")
+            label.bind(size=label.setter('text_size'))
+            ti = TextInput(
+                text=_default,
+                hint_text=hint,
+                multiline=False,
+                password=passwd,
+                foreground_color=WHITE,
+                background_color=INPUT_GRAY,
+                size_hint=(0.68, None),
+                height=38,
+                cursor_color=WHITE
+            )
+            setattr(self, _id, ti)
+            row.add_widget(label)
+            row.add_widget(ti)
+            return row
+
+        layout.add_widget(make_row("IP Address:", "Enter IP address", _default="127.0.0.1", _id="ip_txt"))
+        layout.add_widget(make_row("Port:", "Enter port", _default="8088", _id="port_txt"))
+        layout.add_widget(make_row("Username:", "Enter username", _default="user1", _id="user_txt"))
+        layout.add_widget(make_row("Password:", "Enter password", True, _default="superpassword", _id="pwd_txt"))
+
+        self.msg_lbl = Label(
+            text='',
+            color=RED,
+            size_hint=(1, None),
+            height=22
+        )
+        layout.add_widget(self.msg_lbl)
+        layout.add_widget(Label(size_hint=(1, 0.04)))
+        login_btn = Button(
+            text="Log in",
+            size_hint=(1, None),
+            background_color=WHITE,
+            color=RED,
+            height=48
+        )
+        login_btn.bind(on_press=self.on_login)
+        layout.add_widget(login_btn)
+        layout.add_widget(Label(size_hint=(1, 0.18)))
+        self.add_widget(layout)
+
+    def on_login(self, instance):
+        ip = self.ip_txt.text.strip()
+        port = self.port_txt.text.strip()
+        user = self.user_txt.text.strip()
+        pwd = self.pwd_txt.text.strip()
         base_url = f"http://{ip}:{port}"
         auth = HTTPBasicAuth(user, pwd)
         try:
             resp = requests.get(f"{base_url}/agents", auth=auth, timeout=5)
             if resp.status_code == 401:
-                self.msg.SetLabel("[!] Bad credentials.")
+                self.msg_lbl.text = "Bad credentials"
+                self.msg_lbl.color = RED
             elif not resp.ok:
-                self.msg.SetLabel(f"[!] Fail to connect: {resp.status_code}")
+                self.msg_lbl.text = f"[!] Fail to connect: {resp.status_code}"
+                self.msg_lbl.color = RED
             else:
                 agents = resp.json().get("agents", [])
-                self.Destroy()
-                frame = MainFrame(base_url, auth, agents)
-                frame.Show()
+                # Next screen/logic placeholder
+                self.msg_lbl.text = "Login successful"
+                self.msg_lbl.color = GREEN
+                if self.app_ref is not None:
+                    self.app_ref.on_login_success(base_url, auth, agents)
+                return True
         except Exception as e:
-            self.msg.SetLabel(f"[!] {str(e)}")
+            self.msg_lbl.text = f"[!] {str(e)}"
+
+class LoginApp(App):
+    def build(self):
+        self.title = "VOLCHOCK C2"
+        return LoginScreen()
+
+if __name__ == '__main__':
+    LoginApp().run()

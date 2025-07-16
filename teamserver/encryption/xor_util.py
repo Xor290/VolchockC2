@@ -1,19 +1,24 @@
+# teamserver/encryption/xor_util.py
+# Contains utility functions for XOR-based encryption and decryption 
+# used in Teamserver communications.
+
 import base64
+from teamserver.logger.CustomLogger import CustomLogger
+log = CustomLogger("volchock")
 
 class XORCipher:
     def __init__(self, key: str):
         if not key:
+            log.critical("[+] Key must not be empty")
             raise ValueError("Key must not be empty")
-        self.key = key.encode()  # Travailler en bytes pour universalité
+        self.key = key.encode()  
 
     def xor_bytes(self, data: bytes) -> bytes:
         key_len = len(self.key)
         return bytes([b ^ self.key[i % key_len] for i, b in enumerate(data)])
 
-
     # Encryption : string → xor → base64 
     # Decryption : base64 → xor → string
-
 
     def encrypt(self, data: str) -> str:
         xored = self.xor_bytes(data)

@@ -20,11 +20,8 @@ cd VolchockC2
 python -m teamserver.main --config .\config\config.json
 
 # for the client :
-    # CLI client
-    python client/client.py -i 127.0.0.1 -p 8088 -u user1 --password superpassword
-
-    # GUI client
-    python client/client-gui.py
+cd client
+python client.py
 
 # agent compilation :
 cd agent/http
@@ -130,6 +127,8 @@ x86_64-w64-mingw32-g++ -o agent.exe main.cpp base64.cpp crypt.cpp system_utils.c
 
 ### 4. Communication & Evasion Customization
 - [x] Implement a configuration/profile file for the teamserver to customize communication parameters
+- [ ] Implement DLL agent 
+- [ ] Implement sRDI execution of shellcode agent
 - [ ] Implement agent generation for specific listeners
 
 ### 5. Memory & Execution Techniques
@@ -139,14 +138,13 @@ x86_64-w64-mingw32-g++ -o agent.exe main.cpp base64.cpp crypt.cpp system_utils.c
 
 ### 6. Graphical User Interface (GUI)
 - [x] Develop a ugly graphical user interface:
-  - [ ] Logs view: teamserver logs
-  - [ ] User view: user connections and activity
+  - [x] Logs view: teamserver logs
+  - [x] User view: user connections and activity
   - [x] Agent view: list of connected agents with interaction to send commands
-  - [ ] Try to make the GUI acceptable
+  - [~] Try to make the GUI acceptable
 
 ### 7. Advanced features (It will probably never be implemented)
   - [ ] Record all commands and output for each agents (sqlite db maybe ?)
-  - [ ] Generation of a shellcode agent
   - [ ] Make contributors rich and famous
   - [ ] Stop all wars in the world
 
@@ -161,25 +159,23 @@ VolchockC2
 ├── LICENSE
 ├── README.md
 ├── agent
-│   ├── http
-│   │   ├── base64.cpp
-│   │   ├── base64.h
-│   │   ├── config.h
-│   │   ├── crypt.cpp
-│   │   ├── crypt.h
-│   │   ├── file_utils.cpp
-│   │   ├── file_utils.h
-│   │   ├── http_client.cpp
-│   │   ├── http_client.h
-│   │   ├── main.cpp
-│   │   ├── pe-exec.cpp
-│   │   ├── pe-exec.h
-│   │   ├── system_utils.cpp
-│   │   ├── system_utils.h
-│   │   ├── task.cpp
-│   │   └── task.h
-│   └── nim
-│       └── agent.nim
+│   └── http
+│       ├── base64.cpp
+│       ├── base64.h
+│       ├── config.h
+│       ├── crypt.cpp
+│       ├── crypt.h
+│       ├── file_utils.cpp
+│       ├── file_utils.h
+│       ├── http_client.cpp
+│       ├── http_client.h
+│       ├── main.cpp
+│       ├── pe-exec.cpp
+│       ├── pe-exec.h
+│       ├── system_utils.cpp
+│       ├── system_utils.h
+│       ├── task.cpp
+│       └── task.h
 ├── assets
 │   ├── demo.jpg
 │   └── gui-demo.jpg
@@ -191,6 +187,8 @@ VolchockC2
 │   ├── constants
 │   │   └── colors.py
 │   ├── ui
+│   │   ├── get_logs.py
+│   │   ├── get_users_logs.py
 │   │   ├── login.py
 │   │   └── mainframe.py
 │   └── utils
@@ -210,6 +208,8 @@ VolchockC2
 │   │   ├── base_listener.py
 │   │   ├── dns_listener.py
 │   │   └── http_listener.py
+│   ├── logger
+│   │   └── CustomLogger.py
 │   ├── main.py
 │   ├── profiles
 │   │   └── volchock.profile

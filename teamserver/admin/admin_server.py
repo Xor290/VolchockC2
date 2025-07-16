@@ -1,10 +1,12 @@
+# teamserver/admin/admin_server.py
+# Runs the administrative HTTP server for the Teamserver, 
+# exposing management APIs and admin functionalities.
+
 from flask import Flask, request, jsonify
 from functools import wraps
 from queue import Queue
-import logging
-
-log = logging.getLogger('werkzeug')
-log.setLevel(logging.ERROR)
+from teamserver.logger.CustomLogger import CustomLogger
+log = CustomLogger("volchock-admin")
 
 class AdminServer:
     def __init__(self, port, users_dict, shared_req_queue, auth_required=True, agent_handler=None, xor_key=None):
@@ -14,11 +16,19 @@ class AdminServer:
         self.shared_req_queue = shared_req_queue
         self.agent_handler = agent_handler
         self.xor_key = xor_key
+        self.connected_users = []
         self.app = Flask(__name__)
         self.add_endpoints()
 
     def check_auth(self, username, password):
-        return username in self.users and self.users[username] == password
+        if (username in self.users and self.users[username] == password):
+            if username not in self.connected_users:
+                log.info(f"[+] New user connected: {username}")
+                self.connected_users.append(username)
+            return True
+        else:
+            log.error(f"[!] Incorrect login for user: {username}")
+            return False
 
     def require_auth(self, f):
         @wraps(f)
@@ -40,6 +50,17 @@ class AdminServer:
         @self.require_auth
         def status():
             return jsonify({"status": "teamserver running"})
+
+        @self.app.route('/logs', methods=['GET'])
+        @self.app.route('/logs/<logger_name>', methods=['GET'])
+        @self.require_auth
+        def get_logs(logger_name=None):
+            if logger_name is None:
+                log_instance = CustomLogger("volchock")
+            else:
+                log_instance = CustomLogger(logger_name)
+            logs = log_instance.get_logs()
+            return jsonify({"logs": logs})
 
         @self.app.route('/pending_requests', methods=['GET'])
         @self.require_auth
@@ -86,6 +107,7 @@ class AdminServer:
                 ok = self.agent_handler.queue_command(agent_id, command)
                 if not ok:
                     return jsonify({"error": f"Agent {agent_id} not found"}), 404
+                log.info(f"[+] New command submit by {request.authorization.username}: {command[0:25]}")
                 return jsonify({"status": "command queued"})
             else:
                 return jsonify({"error": "No agent_handler"}), 500
@@ -99,5 +121,5 @@ class AdminServer:
             return jsonify({"results": []})
 
     def start(self):
-        print(f"[+] Admin server started on port {self.port}")
+        log.info(f"[+] Admin server started on port {self.port}")
         self.app.run(host="0.0.0.0", port=self.port, threaded=True)

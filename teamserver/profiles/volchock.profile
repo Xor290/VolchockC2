@@ -2,7 +2,7 @@
   {
     "name": "http",
     "type": "http",
-    "port": 8080,
+    "port": 80,
     "user_agent": "Mozilla/5.0",
     "uri_paths": ["/api", "/update"],
     "http_headers": {
@@ -12,6 +12,6 @@
   {
     "name": "dns",
     "type": "dns",
-    "port": 5300
+    "port": 53
   }
 ]

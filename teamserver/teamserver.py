@@ -12,15 +12,32 @@ import json
 import threading
 import time
 import socket
+import logging
+import sys
+
+# redirect all output (info, err...) to CustomLogger
+from teamserver.logger.CustomLogger import CustomLogger
+log = CustomLogger("volchock")
+class StreamToLogger:
+    def __init__(self, logger, level):
+        self.logger = logger
+        self.level = level
+    def write(self, message):
+        message = message.strip()
+        if message:
+            self.logger.log(self.level, message)
+    def flush(self):
+        pass
+sys.stdout = StreamToLogger(log.logger, logging.INFO)
+sys.stderr = StreamToLogger(log.logger, logging.INFO)
 
 class Teamserver:
     def __init__(self, config_path="config/config.json"):
         try:
             self.config = Config(config_path)
         except Exception as e:
-            print("[!] Configuration file not found or is invalid.", str(e))
+            log.error("[!] Configuration file not found or is invalid.", str(e))
             raise
-
         self.listeners = []
         self.agent_handler = AgentHandler()
         self.shared_queue = Queue()
@@ -28,8 +45,7 @@ class Teamserver:
     def start_admin(self):
         admin_port = self.config.get("server_port", 8080)
         auth_required = self.config.get("auth_required", True)
-        users = self.config.get("clients", {})          # dict utilisateur:password
-
+        users = self.config.get("clients", {})
         admin_server = AdminServer(
             port=admin_port,
             users_dict=users,
@@ -40,25 +56,21 @@ class Teamserver:
         admin_thread = threading.Thread(target=admin_server.start, daemon=True)
         admin_thread.start()
 
-
     def start_listeners(self):
         profiles = [
             os.path.join(os.path.dirname(__file__), "profiles", "volchock.profile"),
         ]
-
         for profile_path in profiles:
             if not os.path.exists(profile_path):
-                print(f"[!] Listener profile not found: {profile_path}")
+                log.error(f"[!] Listener profile not found: {profile_path}")
                 continue
             with open(profile_path, "r", encoding="utf-8") as fp:
                 profiles_cfg = json.load(fp)
-
             for profile_cfg in profiles_cfg:
                 port = profile_cfg.get("port")
                 if port is None:
-                    print(f"[!] Port not specified in profile: {profile_path}")
+                    log.error(f"[!] Port not specified in profile: {profile_path}")
                     continue
-
                 listener_type = profile_cfg.get("type", "").lower()
                 if listener_type == "http":
                     listener = HttpListener(
@@ -79,23 +91,21 @@ class Teamserver:
                         xor_key= self.config.get("xor_key", None)
                     )
                 else:
-                    print(f"[!] Unknown listener type: {listener_type}")
+                    log.error(f"[!] Unknown listener type: {listener_type}")
                     continue
-
                 listener_thread = threading.Thread(target=listener.start, daemon=True)
                 listener_thread.start()
                 self.listeners.append((listener, listener_thread))
-
-                print(f"[+] Listener {profile_cfg.get('name')} started on port {port}.")
+                log.info(f"[+] Listener {profile_cfg.get('name')} started on port {port}.")
 
     def run(self):
-        print("[*] Teamserver is running.")
+        log.debug("[+] Teamserver is running.")
         self.start_admin()
         self.start_listeners()
         try:
             while True:
                 time.sleep(1)
         except KeyboardInterrupt:
-            print("[*] Teamserver shutting down.")
+            log.info("[+] Teamserver shutting down.")
             for listener, _ in self.listeners:
                 listener.stop()

@@ -1,6 +1,11 @@
 #include "system_utils.h"
 #include <windows.h>
 #include <psapi.h>
+#include <cstdlib>
+#include <ctime>
+#include <string>
+#include <sstream>
+#include <iomanip>
 #define UNLEN 127
 
 std::string get_hostname() {
@@ -31,5 +36,17 @@ std::string get_process_name() {
 }
 
 std::string generate_agent_id() {
-    return get_hostname() + "_" + get_username() + "_" + get_process_name();
+    static std::string agent_id;
+    if (agent_id.empty()) {
+        static bool seeded = false;
+        if (!seeded) {
+            std::srand(static_cast<unsigned int>(std::time(nullptr)));
+            seeded = true;
+        }
+        int num = 10000000 + std::rand() % 90000000; // nombre entre 10000000 et 99999999
+        std::ostringstream oss;
+        oss << std::setw(8) << std::setfill('0') << num; // formatte sur 8 chiffres
+        agent_id = oss.str();
+    }
+    return agent_id;
 }
