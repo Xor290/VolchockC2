@@ -4,7 +4,7 @@ VolchockC2 is a custom-built Command & Control (C2) framework, currently under a
 <p align="center">
   <img src="client/assets/logo.jpg" alt="Logo" width="150px"/>
   <br /><hr /><br />
-  <img src="assets/demo-GUI-kivy.jpg" alt="Demo" width="90%"/>
+  <img src="assets/demo-GUI-kivy.jpg" alt="Demo" width="100%"/>
   <br />
 </p>
 
