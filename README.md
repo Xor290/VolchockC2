@@ -2,9 +2,10 @@
 VolchockC2 is a custom-built Command & Control (C2) framework, currently under active development. Designed for red team operations and adversary simulation, VolchokC2 focuses on flexibility, stealth, and efficient post-exploitation capabilities.
 
 <p align="center">
-  <img src="assets/demo.jpg" alt="Demo" width="90%"/>
+  <img src="client/assets/logo.jpg" alt="Logo" width="60%"/>
   <br />
-  <img src="assets/gui-demo.jpg" alt="GUI Demo" width="90%"/>
+  <img src="assets/demo-GUI-kivy.jpg" alt="Demo" width="90%"/>
+  <br />
 </p>
 
 
