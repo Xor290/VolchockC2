@@ -24,9 +24,9 @@ python -m teamserver.main --config .\config\config.json
 cd client
 python client.py
 
-# agent compilation :
-cd agent/http
-x86_64-w64-mingw32-g++ -o agent.exe main_exe.cpp base64.cpp crypt.cpp system_utils.cpp file_utils.cpp http_client.cpp task.cpp pe-exec.cpp -lwininet -lpsapi -static-libstdc++ -static-libgcc -lws2_32
+# agent compilation (in client GUI console) :
+> listeners
+> generate <listener_name> <agent_type>
 ```
 
 ---
