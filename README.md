@@ -125,7 +125,7 @@ The shellcode payload is based on a DLL with a reflective position-independant l
 
 ### 1. Core Listeners (Communication Channels)
 - [x] Implement HTTP listener
-- [ ] Implement basic DNS listener [removed]
+- [ ] Implement basic DNS listener [REMOVED]
 
 ### 2. Command & Control Operations
 - [x] Implement command execution queue
@@ -141,7 +141,7 @@ The shellcode payload is based on a DLL with a reflective position-independant l
 - [x] Implement a configuration/profile file for the teamserver to customize communication parameters
 - [x] Implement DLL agent 
 - [x] Implement sRDI execution of shellcode agent
-- [ ] Implement agent generation for specific listeners
+- [x] Implement agent generation for specific listeners
 
 ### 5. Memory & Execution Techniques
 - [x] Implement in-memory PE (Portable Executable) execution for C/C++ payloads
