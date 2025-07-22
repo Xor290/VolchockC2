@@ -114,7 +114,7 @@ x86_64-w64-mingw32-g++ -o agent.exe main_exe.cpp base64.cpp crypt.cpp system_uti
 
 ### 1. Core Listeners (Communication Channels)
 - [x] Implement HTTP listener
-- [-] Implement basic DNS listener [removed]
+- [ ] Implement basic DNS listener [removed]
 
 ### 2. Command & Control Operations
 - [x] Implement command execution queue
@@ -142,7 +142,7 @@ x86_64-w64-mingw32-g++ -o agent.exe main_exe.cpp base64.cpp crypt.cpp system_uti
   - [x] Logs view: teamserver logs
   - [x] User view: user connections and activity
   - [x] Agent view: list of connected agents with interaction to send commands
-  - [~] Try to make the GUI acceptable
+  - [x] Try to make the GUI acceptable
 
 ### 7. Advanced features (It will probably never be implemented)
   - [ ] Record all commands and output for each agents (sqlite db maybe ?)
@@ -241,7 +241,7 @@ VolchockC2
 
 ### Reflective Loading
 
-The shellcode payload is based on a DLL with a reflective position-independant loader :
+The shellcode payload is based on a DLL with a reflective position-independant loader (aka Stephen Fewer sRDI) :
 <p align="center">
   <br />
   <img src="assets/reflectiveloader.jpg" alt="Reflective Loader schema" width="100%"/>
