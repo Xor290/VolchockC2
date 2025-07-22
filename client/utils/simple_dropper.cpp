@@ -1,3 +1,5 @@
+// compile with x86_64-w64-mingw32-g++ dropper.cpp -o dropper.exe -static
+
 #include <windows.h>
 #include <iostream>
 #include <fstream>

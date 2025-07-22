@@ -232,6 +232,7 @@ class MainFrame(Screen):
     def append_to_console(self, txt):
         if not hasattr(self, "console_history"):
             self.console_history = []
+        print(txt)
         lines = txt.splitlines()
         self.console_history.extend(lines)
         to_display = self.console_history 
@@ -351,6 +352,34 @@ class MainFrame(Screen):
         except Exception as e:
             Clock.schedule_once(lambda dt: self.append_to_console(f"[!] Exception: {e}\n"))
 
+
+    def get_agent(self, listener_name, agent_type):
+        resp = requests.get(f"{self.base_url}/generate/{listener_name}/{agent_type}", auth=self.auth)
+        if resp.ok:
+            results = resp.json().get("results", [])
+            try:
+                b64_agent = results['content']
+                if agent_type == "exe":
+                    with open('agent.exe', 'wb') as f:
+                        f.write(base64.b64decode(b64_agent))
+                    Clock.schedule_once(lambda dt: self.append_to_console("\n[+] Agent save as \"agent.exe\"\n"))
+                elif agent_type == "dll":
+                    with open('agent.dll', 'wb') as f:
+                        f.write(base64.b64decode(b64_agent))
+                    Clock.schedule_once(lambda dt: self.append_to_console("\n[+] Agent save as \"agent.dll\"\n"))
+                elif agent_type == "shellcode":
+                    with open('shellcode.bin', 'wb') as f:
+                        f.write(base64.b64decode(b64_agent))
+                    Clock.schedule_once(lambda dt: self.append_to_console("\n[+] Agent save as \"shellcode.bin\"\n"))
+                else:
+                    Clock.schedule_once(lambda dt: self.append_to_console("\n[!] Can't save agent : No type found.\n"))
+            except Exception as excepssion:
+                print(excepssion)
+                Clock.schedule_once(lambda dt: self.append_to_console(results))
+        else:
+            Clock.schedule_once(lambda dt: self.append_to_console(results))
+
+
     def on_shell_command(self, _):
         display_help = """
 Available Commands:
@@ -395,11 +424,18 @@ Available Commands:
                 Clock.schedule_once(lambda dt: self.append_to_console(listeners))
             return
         elif cmd.lower().startswith("generate"):
-            resp = requests.get(f"{self.base_url}/generate/http/exe", auth=self.auth)
-            print(resp)
-            if resp.ok:
-                results = resp.json().get("results", [])
-                Clock.schedule_once(lambda dt: self.append_to_console(results))
+            cmd = cmd.lower().strip()
+            parts = cmd.split()
+            if len(parts) == 3:
+                _, listener_name, agent_type = parts
+                if agent_type != "exe" and agent_type != "dll" and agent_type != "shellcode":
+                    Clock.schedule_once(lambda dt: self.append_to_console(f"\n{display_help}\n"))
+                    return
+                Clock.schedule_once(lambda dt: self.append_to_console(f"[+] Requesting {agent_type} agent...\n"))
+                Thread(target=self.get_agent, args=(listener_name, agent_type)).start()
+                self.cmd_txt.text = ""
+            else:
+                Clock.schedule_once(lambda dt: self.append_to_console(f"\n{display_help}\n"))
             return
         # agent commands
         if idx is None or not self._agents:
@@ -416,7 +452,7 @@ Available Commands:
             payload_cmd = cmd[6:].strip()
             display_cmd = str({"cmd": payload_cmd})
             queue_shell_command(self.base_url, agent_id, display_cmd, self.auth)
-            Clock.schedule_once(lambda dt: self.append_to_console(f"\n[+] Shell command sent: {payload_cmd}\n[~] Waiting result ..."))
+            Clock.schedule_once(lambda dt: self.append_to_console(f"[+] Shell command sent: {payload_cmd}\n[~] Waiting result ..."))
             self._last_result_poll_agentid = agent_id
         elif cmd.lower().startswith("download "):
             Clock.schedule_once(lambda dt: self.append_to_console(f"[+] Trying to download file: {payload_cmd} \n"))

