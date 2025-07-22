@@ -12,10 +12,12 @@ import base64
 from teamserver.logger.CustomLogger import CustomLogger
 log = CustomLogger("volchock")
 
+
 class HttpListener(BaseListener):
-    def __init__(self, config, host="0.0.0.0", port=80, request_queue=None, agent_handler=None, xor_key=None):
+    def __init__(self, config, name, host="0.0.0.0", port=80, request_queue=None, agent_handler=None, xor_key=None):
         super().__init__(config)
         log.debug("[+] HttpListener initialized")
+        self.name = name
         self.host = host
         self.port = port
         self.flask_app = Flask(self.config.get('name', 'http_listener'))

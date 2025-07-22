@@ -26,7 +26,7 @@ python client.py
 
 # agent compilation :
 cd agent/http
-x86_64-w64-mingw32-g++ -o agent.exe main.cpp base64.cpp crypt.cpp system_utils.cpp file_utils.cpp http_client.cpp task.cpp pe-exec.cpp -lwininet -lpsapi -static
+x86_64-w64-mingw32-g++ -o agent.exe main_exe.cpp base64.cpp crypt.cpp system_utils.cpp file_utils.cpp http_client.cpp task.cpp pe-exec.cpp -lwininet -lpsapi -static-libstdc++ -static-libgcc -lws2_32
 ```
 
 ---
@@ -114,7 +114,7 @@ x86_64-w64-mingw32-g++ -o agent.exe main.cpp base64.cpp crypt.cpp system_utils.c
 
 ### 1. Core Listeners (Communication Channels)
 - [x] Implement HTTP listener
-- [x] Implement basic DNS listener
+- [-] Implement basic DNS listener [removed]
 
 ### 2. Command & Control Operations
 - [x] Implement command execution queue
@@ -128,8 +128,8 @@ x86_64-w64-mingw32-g++ -o agent.exe main.cpp base64.cpp crypt.cpp system_utils.c
 
 ### 4. Communication & Evasion Customization
 - [x] Implement a configuration/profile file for the teamserver to customize communication parameters
-- [ ] Implement DLL agent 
-- [ ] Implement sRDI execution of shellcode agent
+- [x] Implement DLL agent 
+- [x] Implement sRDI execution of shellcode agent
 - [ ] Implement agent generation for specific listeners
 
 ### 5. Memory & Execution Techniques
@@ -160,24 +160,44 @@ VolchockC2
 ├── LICENSE
 ├── README.md
 ├── agent
-│   └── http
-│       ├── base64.cpp
-│       ├── base64.h
-│       ├── config.h
-│       ├── crypt.cpp
-│       ├── crypt.h
-│       ├── file_utils.cpp
-│       ├── file_utils.h
-│       ├── http_client.cpp
-│       ├── http_client.h
-│       ├── main.cpp
-│       ├── pe-exec.cpp
-│       ├── pe-exec.h
-│       ├── system_utils.cpp
-│       ├── system_utils.h
-│       ├── task.cpp
-│       └── task.h
+│   ├── ReflectiveLoader
+│   │   ├── DllLoaderShellcode
+│   │   │   ├── CREDITS.txt
+│   │   │   ├── Loader
+│   │   │   │   ├── Loader.vcxproj
+│   │   │   │   ├── Loader.vcxproj.filters
+│   │   │   │   ├── Loader.vcxproj.user
+│   │   │   │   ├── ReflectiveLoader.cpp
+│   │   │   │   ├── ReflectiveLoader.h
+│   │   │   │   ├── order.x64.txt
+│   │   │   │   └── order.x86.txt
+│   │   │   ├── Loader.sln
+│   │   │   └── x64
+│   │   │       └── Release
+│   │   │           ├── Loader.exe
+│   │   │           └── Loader.pdb
+│   │   └── shellcodize.py
+│   ├── http
+│   │   ├── base64.cpp
+│   │   ├── base64.h
+│   │   ├── config.h
+│   │   ├── crypt.cpp
+│   │   ├── crypt.h
+│   │   ├── file_utils.cpp
+│   │   ├── file_utils.h
+│   │   ├── http_client.cpp
+│   │   ├── http_client.h
+│   │   ├── main_dll.cpp
+│   │   ├── main_exe.cpp
+│   │   ├── pe-exec.cpp
+│   │   ├── pe-exec.h
+│   │   ├── system_utils.cpp
+│   │   ├── system_utils.h
+│   │   ├── task.cpp
+│   │   └── task.h
+│   └── simple_dropper.cpp
 ├── assets
+│   ├── demo-GUI-kivy.jpg
 │   ├── demo.jpg
 │   └── gui-demo.jpg
 ├── client
@@ -207,7 +227,6 @@ VolchockC2
 │   │   └── xor_util.py
 │   ├── listener
 │   │   ├── base_listener.py
-│   │   ├── dns_listener.py
 │   │   └── http_listener.py
 │   ├── logger
 │   │   └── CustomLogger.py
@@ -217,6 +236,18 @@ VolchockC2
 │   └── teamserver.py
 └── tree_map.py
 ```
+
+---
+
+### Reflective Loading
+
+The shellcode payload is based on a DLL with a reflective position-independant loader :
+<p align="center">
+  <br />
+  <img src="assets/reflectiveloader.jpg" alt="Reflective Loader schema" width="100%"/>
+  <br />
+</p>
+
 
 ---
 

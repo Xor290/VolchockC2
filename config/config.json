@@ -1,6 +1,5 @@
 {
     "server_port": 8088,
-    "xor_key": "mysecretkey",
     "auth_required": true,
     "clients": {
         "user1": "superpassword"

@@ -3,7 +3,6 @@
 
 from teamserver.config import Config
 from teamserver.listener.http_listener import HttpListener
-from teamserver.listener.dns_listener import DnsListener
 from teamserver.admin.admin_server import AdminServer
 from teamserver.agents.agent_handler import AgentHandler
 from queue import Queue
@@ -14,6 +13,8 @@ import time
 import socket
 import logging
 import sys
+import random
+import string
 
 # redirect all output (info, err...) to CustomLogger
 from teamserver.logger.CustomLogger import CustomLogger
@@ -28,8 +29,8 @@ class StreamToLogger:
             self.logger.log(self.level, message)
     def flush(self):
         pass
-sys.stdout = StreamToLogger(log.logger, logging.INFO)
-sys.stderr = StreamToLogger(log.logger, logging.INFO)
+#sys.stdout = StreamToLogger(log.logger, logging.INFO)
+#sys.stderr = StreamToLogger(log.logger, logging.INFO)
 
 class Teamserver:
     def __init__(self, config_path="config/config.json"):
@@ -51,7 +52,8 @@ class Teamserver:
             users_dict=users,
             shared_req_queue=self.shared_queue,
             auth_required=auth_required,
-            agent_handler=self.agent_handler
+            agent_handler=self.agent_handler,
+            listeners=self.listeners
         )
         admin_thread = threading.Thread(target=admin_server.start, daemon=True)
         admin_thread.start()
@@ -71,41 +73,39 @@ class Teamserver:
                 if port is None:
                     log.error(f"[!] Port not specified in profile: {profile_path}")
                     continue
+                name = profile_cfg.get("name")
+                if name is None:
+                    log.error(f"[!] Name not specified in profile: {profile_path}")
+                    continue
+                xor_key = profile_cfg.get("xor_key")
+                if xor_key is None:
+                    log.error(f"[!] Xor key not specified in profile: {profile_path}")
+                    continue
                 listener_type = profile_cfg.get("type", "").lower()
                 if listener_type == "http":
                     listener = HttpListener(
                         config=profile_cfg,
+                        name=name,
                         host="0.0.0.0",
                         port=port,
                         request_queue=self.shared_queue,
                         agent_handler=self.agent_handler,
-                        xor_key= self.config.get("xor_key", None)
-                    )
-                elif listener_type == "dns":
-                    listener = DnsListener(
-                        config=profile_cfg,
-                        host="0.0.0.0",
-                        port=port,
-                        request_queue=self.shared_queue,
-                        agent_handler=self.agent_handler,
-                        xor_key= self.config.get("xor_key", None)
+                        xor_key=xor_key
                     )
                 else:
                     log.error(f"[!] Unknown listener type: {listener_type}")
                     continue
+                self.listeners.append(listener)
                 listener_thread = threading.Thread(target=listener.start, daemon=True)
                 listener_thread.start()
-                self.listeners.append((listener, listener_thread))
                 log.info(f"[+] Listener {profile_cfg.get('name')} started on port {port}.")
 
     def run(self):
         log.debug("[+] Teamserver is running.")
-        self.start_admin()
         self.start_listeners()
+        self.start_admin()
         try:
             while True:
                 time.sleep(1)
         except KeyboardInterrupt:
             log.info("[+] Teamserver shutting down.")
-            for listener, _ in self.listeners:
-                listener.stop()
