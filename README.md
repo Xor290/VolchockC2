@@ -142,6 +142,7 @@ The shellcode payload is based on a DLL with a reflective position-independant l
 - [x] Implement DLL agent 
 - [x] Implement sRDI execution of shellcode agent
 - [x] Implement agent generation for specific listeners
+- [ ] Implement basic obfuscation
 
 ### 5. Memory & Execution Techniques
 - [x] Implement in-memory PE (Portable Executable) execution for C/C++ payloads
