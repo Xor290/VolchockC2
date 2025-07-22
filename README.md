@@ -110,6 +110,17 @@ x86_64-w64-mingw32-g++ -o agent.exe main_exe.cpp base64.cpp crypt.cpp system_uti
 
 ---
 
+### Reflective Loading
+
+The shellcode payload is based on a DLL with a reflective position-independant loader (aka Stephen Fewer sRDI) :
+<p align="center">
+  <br />
+  <img src="assets/reflectiveloader.jpg" alt="Reflective Loader schema" width="100%"/>
+  <br />
+</p>
+
+---
+
 ## Implementation Roadmap
 
 ### 1. Core Listeners (Communication Channels)
@@ -236,18 +247,6 @@ VolchockC2
 │   └── teamserver.py
 └── tree_map.py
 ```
-
----
-
-### Reflective Loading
-
-The shellcode payload is based on a DLL with a reflective position-independant loader (aka Stephen Fewer sRDI) :
-<p align="center">
-  <br />
-  <img src="assets/reflectiveloader.jpg" alt="Reflective Loader schema" width="100%"/>
-  <br />
-</p>
-
 
 ---
 
