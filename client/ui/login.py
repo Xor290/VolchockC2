@@ -78,10 +78,10 @@ class LoginScreen(Screen):
             row.add_widget(ti)
             return row
 
-        layout.add_widget(make_row("IP Address:", "Enter IP address", _default="127.0.0.1", _id="ip_txt"))
+        layout.add_widget(make_row("IP Address:", "Enter IP address", _default="52.178.4.207", _id="ip_txt"))
         layout.add_widget(make_row("Port:", "Enter port", _default="8088", _id="port_txt"))
-        layout.add_widget(make_row("Username:", "Enter username", _default="user1", _id="user_txt"))
-        layout.add_widget(make_row("Password:", "Enter password", True, _default="superpassword", _id="pwd_txt"))
+        layout.add_widget(make_row("Username:", "Enter username", _default="proc", _id="user_txt"))
+        layout.add_widget(make_row("Password:", "Enter password", True, _default="mdp2PR0C", _id="pwd_txt"))
 
         self.msg_lbl = Label(
             text='',

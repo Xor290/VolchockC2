@@ -45,11 +45,13 @@ class HttpListener(BaseListener):
             log.error("[!] Invalid User-Agent")
             return "Invalid User-Agent", 403
         # header check
+        """
         expected_headers = self.config.get('http_headers', {})
         for header, value in expected_headers.items():
             if request.headers.get(header) != value:
                 log.error("[!] Invalid header")
                 return f"Invalid header {header}", 403
+        """
         # decoding data
         agent_id = None
         decoded_json = {}
