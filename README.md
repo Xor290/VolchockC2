@@ -24,9 +24,6 @@ python -m teamserver.main --config .\config\config.json
 cd client
 python client.py
 
-# agent compilation (in client GUI console) :
-> listeners
-> generate <listener_name> <agent_type>
 ```
 
 ---
