@@ -174,7 +174,7 @@ class AdminServer:
 #pragma once
 #include <string>
 constexpr char XOR_KEY[] = "{xor_key}";
-constexpr char VOLCHOCK_SERVER[] = "{host}";
+constexpr char VOLCHOCK_SERVERS[] = "{host}";
 constexpr int VOLCHOCK_PORT = {port};
 constexpr char USER_AGENT[] = "{user_agent}";
 constexpr char HEADER[] = "{header_cstr}";
