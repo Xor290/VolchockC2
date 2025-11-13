@@ -139,6 +139,7 @@ The shellcode payload is based on a DLL with a reflective position-independant l
 - [x] Implement DLL agent 
 - [x] Implement sRDI execution of shellcode agent
 - [x] Implement agent generation for specific listeners
+- [x] Implement basic anti-VM or anti-debugging measures
 - [ ] Implement basic obfuscation
 
 ### 5. Memory & Execution Techniques
@@ -158,9 +159,37 @@ The shellcode payload is based on a DLL with a reflective position-independant l
   - [ ] Make contributors rich and famous
   - [ ] Stop all wars in the world
 
+### Anti Vm & Anti Debugging
+
+1. CPUID Hypervisor Bit (cpu_hypervisor_bit)
+
+- Read the CPUID flag, which indicates the presence of a hypervisor.
+
+2. CPU Vendor String (cpu_id)
+
+- Query the processor's vendor string (AuthenticAMD, GenuineIntel, etc.).
+
+3. CPU Brand String and Keyword Search (cpu_brand)
+
+- Read the CPU brand/description and search for keywords related to VMs (vbox, vmware, virtual, qemu, etc.).
+
+4. Screen Resolution (screen_resolution)
+
+- Check for typical VM screen resolutions.
+
+5. Physical Memory Amount (memory_amount)
+
+- Read the total RAM and check if it is below a threshold (e.g., < 2GB).
+
+6. Number of CPU cores (cpu_cores)
+
+- Check if the number of logical processors is very low (e.g., < 2).
+
+7. Free disk space (disk_space)
+
+- Check the disk space on the system volume and compare it to a threshold (e.g., < 20GB).
 
 ---
-
 
 ### Teammates
 

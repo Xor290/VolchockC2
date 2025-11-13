@@ -1,7 +1,7 @@
 {
     "server_port": 8088,
-    "auth_required": true,
-    "user1": {
+    "auth_required": false,
+    "user": {
         "proc": "magicpassword"
     }
 }
