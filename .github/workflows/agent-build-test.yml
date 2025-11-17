@@ -1,12 +1,9 @@
-name: Build and Test Agent
+name: Build Agent
 
 on:
   push:
-    branches: [ main, master, develop ]
-  pull_request:
-    branches: [ main, master ]
-  release:
-    types: [ published ]
+    branches:
+        - main
 
 jobs:
   build:
@@ -16,56 +13,27 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
-    - name: Test Docker image
+    - name: Build using Docker image
       run: |
-        docker run --rm xor1234/agent:latest
-        
-    - name: Build with custom commands
-      run: |
-        # Compiler la DLL
+        # Utiliser l'image Docker avec le script compile.sh intégré
         docker run --rm \
           -v ${{ github.workspace }}:/workspace \
+          -w /workspace \
           xor1234/agent:latest \
-          x86_64-w64-mingw32-g++ -shared -o /workspace/agent.dll \
-          /workspace/main_dll.cpp \
-          /workspace/base64.cpp \
-          /workspace/crypt.cpp \
-          /workspace/system_utils.cpp \
-          /workspace/file_utils.cpp \
-          /workspace/http_client.cpp \
-          /workspace/task.cpp \
-          /workspace/pe-exec.cpp \
-          /workspace/vm_detection.cpp \
-          -lwininet -lpsapi -static-libstdc++ -static-libgcc -lws2_32
+          compile.sh
           
-    - name: Verify build artifacts
+    - name: Verify artifacts
       run: |
-        ls -la *.dll *.exe || echo "No build artifacts found"
-        file agent.dll || echo "DLL not found"
+        echo "=== Fichiers générés ==="
+        ls -la *.dll *.exe
+        echo "=== Information des fichiers ==="
+        file agent.dll agent.exe 2>/dev/null || echo "Fichiers non trouvés"
         
-    - name: Upload build artifacts
+    - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
         name: windows-agent
         paths: |
           agent.dll
           agent.exe
-        retention-days: 7
-        
-  release:
-    runs-on: ubuntu-latest
-    needs: build
-    if: github.event_name == 'release'
-    
-    steps:
-    - name: Download artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: windows-agent
-        
-    - name: Upload to release
-      uses: softprops/action-gh-release@v1
-      with:
-        files: |
-          agent.dll
-          agent.exe
+        retention-days: 30
