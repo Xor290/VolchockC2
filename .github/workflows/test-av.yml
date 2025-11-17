@@ -3,28 +3,27 @@ on:
   push:
     branches:
       - main
+
 jobs:
   test-volchock-c2:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
-      - name: Login to Docker Hub
-        uses: docker/login-action@v2
+
       - name: Pull image from Docker Hub
-        run: |
-          docker pull xor1234/teamserver:latest
-      - name: Start Teamserver
-        run: |
-          docker run -d --name teamserver xor1234/teamserver:latest 
+        run: docker pull xor1234/teamserver:latest
+
+      - name: Start Teamserver & Client
+        run: docker run -d --name teamserver xor1234/teamserver:latest 
+
       - name: Check running containers
-        run: |
-          docker ps
+        run: docker ps
+
       - name: Fetch logs (Teamserver & Client)
         run: |
           echo "==== Teamserver & Client Logs ===="
-          docker logs teamserver 
-
-
+          docker logs teamserver
