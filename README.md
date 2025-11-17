@@ -155,6 +155,7 @@ The shellcode payload is based on a DLL with a reflective position-independant l
   - [x] Try to make the GUI acceptable
 
 ### 7. Advanced features (It will probably never be implemented)
+  - [X] Add CI
   - [ ] Record all commands and output for each agents (sqlite db maybe ?)
   - [ ] Make contributors rich and famous
   - [ ] Stop all wars in the world
