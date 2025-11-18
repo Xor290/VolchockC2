@@ -28,16 +28,18 @@ jobs:
 
     - name: Verify artifacts
       run: |
-        echo "=== Fichiers générés ==="
-        ls -la *.dll *.exe 2>/dev/null || echo "Aucun fichier généré"
-        echo "=== Information des fichiers ==="
-        file agent.dll agent.exe 2>/dev/null || echo "Fichiers non trouvés"
-        
+        echo "=== Fichiers générés dans agent/http ==="
+        ls -la agent/http/*.dll agent/http/*.exe 2>/dev/null || echo "Aucun fichier généré"
+
+        echo "=== Informations ==="
+        file agent/http/agent.dll agent/http/agent.exe 2>/dev/null || echo "Fichiers non trouvés"
+
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
         name: windows-agent
-        paths: |
-          agent.dll
-          agent.exe
+        path: |
+          agent/http/agent.dll
+          agent/http/agent.exe
+        if-no-files-found: warn
         retention-days: 30
