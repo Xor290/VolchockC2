@@ -13,6 +13,11 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Fix permissions
+      run: |
+        chmod +x agent/http/compile.sh
+        sed -i 's/\r$//' agent/http/compile.sh
+
     - name: Build using Docker image
       run: |
         docker run --rm \
