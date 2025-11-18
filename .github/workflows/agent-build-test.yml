@@ -13,18 +13,13 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Debug workspace
-      run: |
-        echo "=== Workspace Content ==="
-        ls -R .
-
     - name: Build using Docker image
       run: |
         docker run --rm \
           -v ${{ github.workspace }}:/workspace \
-          -w /workspace \
+          -w /workspace/agent/http \
           xor1234/agent:latest \
-          /bin/bash -c "./compile.sh"
+          ./compile.sh
 
     - name: Verify artifacts
       run: |
