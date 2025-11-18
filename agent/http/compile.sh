@@ -15,7 +15,6 @@ x86_64-w64-mingw32-g++ -shared -o agent.dll \
   pe-exec.cpp \
   vm_detection.cpp \
   -lwininet -lpsapi -static-libstdc++ -static-libgcc -lws2_32
-
 # Compiler l'exécutable
 echo "Compilation EXE..."
 x86_64-w64-mingw32-g++ -o agent.exe \
