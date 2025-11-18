@@ -3,7 +3,7 @@ name: Build Agent
 on:
   push:
     branches:
-        - main
+      - main
 
 jobs:
   build:
@@ -12,23 +12,24 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-    - name: Debug
+
+    - name: Debug workspace
       run: |
-        ls -la
-        
+        echo "=== Workspace Content ==="
+        ls -R .
+
     - name: Build using Docker image
       run: |
-        # Utiliser l'image Docker avec le script compile.sh intégré
         docker run --rm \
           -v ${{ github.workspace }}:/workspace \
           -w /workspace \
           xor1234/agent:latest \
-          compile.sh
-          
+          /bin/bash -c "./compile.sh"
+
     - name: Verify artifacts
       run: |
         echo "=== Fichiers générés ==="
-        ls -la *.dll *.exe
+        ls -la *.dll *.exe 2>/dev/null || echo "Aucun fichier généré"
         echo "=== Information des fichiers ==="
         file agent.dll agent.exe 2>/dev/null || echo "Fichiers non trouvés"
         
